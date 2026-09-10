@@ -112,8 +112,16 @@ export async function predictFundusImage(image, patientId) {
       statusKey: 'detected'
     }));
 
-    // Grad-CAM URL is optional — prediction is still valid without it
-    const gradcamFullUrl = data.gradcam_url ? `${API_BASE_URL}${data.gradcam_url}` : null;
+    // Grad-CAM and Image URLs normalization (handle relative and absolute URLs)
+    const resolveUrl = (url) => {
+      if (!url) return null;
+      if (typeof url !== 'string') return null;
+      return url.startsWith('http://') || url.startsWith('https://') ? url : `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+    };
+
+    const gradcamFullUrl = resolveUrl(data.gradcam_url || data.gradcamUrl);
+    const imageFullUrl = resolveUrl(data.image_url || data.imageUrl);
+
     const DR_DEFAULT_LABELS = {
       0: 'No DR',
       1: 'Mild DR',
@@ -143,10 +151,12 @@ export async function predictFundusImage(image, patientId) {
       else if (stripped) cleanLabel = stripped;
     }
     const drStageLabel = `Stage ${drStageNum} — ${cleanLabel}`;
+    const screeningId = data.screening_id || data.screeningId;
 
     return {
-      screeningId: data.screening_id || data.screeningId,
-      screeningDate: data.created_at?.slice(0, 10),
+      screeningId: screeningId,
+      screening_id: screeningId,
+      screeningDate: data.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
       drStage: `stage${drStageNum}`,
       drStageNumber: drStageNum,
       dr_stage: drStageNum,
@@ -158,8 +168,11 @@ export async function predictFundusImage(image, patientId) {
       odirFindings: odirList,
       detectedFindings: detectedFindings,
       secondaryFindings: secondaryFindings,
-      imageUrl: `${API_BASE_URL}${data.image_url}`,
+      imageUrl: imageFullUrl,
+      image_url: imageFullUrl,
       heatmapDataUrl: gradcamFullUrl,
+      gradcamUrl: gradcamFullUrl,
+      gradcam_url: gradcamFullUrl,
       explanation: 'Highlighted regions in the attention map contributed to the diabetic retinopathy classification.',
       recommendedNextStep: drStageNum >= 2
         ? 'Further evaluation by an eye-care professional is recommended.'

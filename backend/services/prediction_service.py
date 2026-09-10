@@ -437,6 +437,7 @@ class PredictionService:
 
             # Secondary findings (multilabel sigmoid with 0.5 threshold)
             rfmid_findings, odir_findings, findings = self._interpret_findings(rfmid_logits, odir_logits)
+            print("MODEL INFERENCE COMPLETE", flush=True)
 
             # --- INTERNAL DIAGNOSTIC LOG (DEVELOPMENT-ONLY) ---
             rfmid_preds = torch.sigmoid(rfmid_logits).squeeze(0)
@@ -486,6 +487,7 @@ class PredictionService:
                 original_img=original_img, 
                 screening_id=screening_id
             )
+            print("GRADCAM COMPLETE", flush=True)
 
             # Grad-CAM is supplementary — its failure must NOT prevent
             # returning a successful prediction result to the user.

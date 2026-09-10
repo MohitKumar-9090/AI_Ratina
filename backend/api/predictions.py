@@ -41,6 +41,7 @@ async def predict_fundus(
     5. Best-effort save screening to database (MongoDB)
     6. Returns clinical results (NO confidence percentages)
     """
+    print("PREDICT START", flush=True)
     target_pid = (patient_id or patientId or "").strip()
     if not target_pid:
         raise ValidationException("patient_id is required and cannot be blank")
@@ -50,6 +51,7 @@ async def predict_fundus(
         raise InvalidImageException("Image file is required (field 'image' or 'file')")
 
     saved_path, image_url = await validate_and_save_image(upload_file, patient_id=target_pid)
+    print("IMAGE SAVED", flush=True)
 
     # Run real model inference and Grad-CAM generation
     result = await prediction_service.predict(image_path=saved_path, patient_id=target_pid)
@@ -92,11 +94,25 @@ async def predict_fundus(
             gradcam_url=gradcam_url,
             screening_date=today_str
         )
+        try:
+            await patient_service.get_by_id(target_pid)
+        except Exception:
+            try:
+                from schemas.patient import PatientCreate
+                await patient_service.create(PatientCreate(
+                    patient_id=target_pid,
+                    full_name=f"Patient {target_pid}",
+                    gender="Other"
+                ))
+            except Exception:
+                pass
         await screening_service.create(screening_data)
+        print("MONGODB SAVE COMPLETE", flush=True)
     except Exception as e:
         logger.warning(f"Screening save failed (prediction still returned): {e}")
         db_warning = f"Prediction succeeded but could not be saved: {e}"
 
+    print("RESPONSE READY", flush=True)
     return PredictionResponse(
         success=True,
         screening_id=screening_id,

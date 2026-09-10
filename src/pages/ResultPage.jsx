@@ -92,15 +92,10 @@ export default function ResultPage() {
     }
   }, [predData, navigate, showToast]);
 
-  if (!predData) {
-    return null;
-  }
-
-  const screeningId = predData.screeningId;
-
   // Match patient record
   const currentPatient = useMemo(() => {
-    return patients.find(p => p.patientId === predData.patientId) || null;
+    if (!predData) return null;
+    return patients.find(p => p.patientId === predData.patientId || p.patient_id === predData.patientId) || null;
   }, [patients, predData]);
 
   const DR_STAGES = {
@@ -112,6 +107,7 @@ export default function ResultPage() {
   };
 
   const stageNumber = useMemo(() => {
+    if (!predData) return 0;
     const parseStageVal = (val) => {
       if (val === undefined || val === null) return null;
       if (typeof val === 'number' && !isNaN(val)) return Math.max(0, Math.min(4, Math.floor(val)));
@@ -121,6 +117,12 @@ export default function ResultPage() {
     };
     return parseStageVal(predData.drStageNumber) ?? parseStageVal(predData.dr_stage) ?? parseStageVal(predData.drStage) ?? 0;
   }, [predData]);
+
+  if (!predData) {
+    return null;
+  }
+
+  const screeningId = predData.screeningId || predData.screening_id;
 
   const drStageKey = `stage${stageNumber}`;
   const currentStageInfo = DR_STAGES[stageNumber] || DR_STAGES[0];

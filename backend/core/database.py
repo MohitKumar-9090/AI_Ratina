@@ -51,10 +51,20 @@ def get_mongo_client() -> Optional[MongoClient]:
             if tls_ca_file:
                 client_kwargs["tlsCAFile"] = tls_ca_file
 
-            _mongo_client = MongoClient(settings.MONGODB_URI, **client_kwargs)
-            _mongo_db = _mongo_client[settings.MONGODB_DATABASE]
+            try:
+                _mongo_client = MongoClient(settings.MONGODB_URI, **client_kwargs)
+                _mongo_db = _mongo_client[settings.MONGODB_DATABASE]
+            except Exception as primary_err:
+                if "cluster0.tvjf08u.mongodb.net" in settings.MONGODB_URI:
+                    logger.warning(f"Primary MongoDB SRV connection failed ({primary_err}). Attempting direct replica set connection...")
+                    fallback_uri = "mongodb://mbhartdwaj6_db_user:EcfHKv3bBq23GcTi@ac-aqyd3gp-shard-00-00.tvjf08u.mongodb.net:27017,ac-aqyd3gp-shard-00-01.tvjf08u.mongodb.net:27017,ac-aqyd3gp-shard-00-02.tvjf08u.mongodb.net:27017/retina_ai?ssl=true&authSource=admin&replicaSet=atlas-tkpljl-shard-0"
+                    _mongo_client = MongoClient(fallback_uri, **client_kwargs)
+                    _mongo_db = _mongo_client[settings.MONGODB_DATABASE]
+                    logger.info("Connected to MongoDB Atlas via direct shard connection.")
+                else:
+                    raise primary_err
         except Exception as e:
-            logger.error(f"MongoClient initialization error: {type(e).__name__}")
+            logger.error(f"MongoClient initialization error: {type(e).__name__}: {e}")
             _mongo_client = None
             _mongo_db = None
     return _mongo_client

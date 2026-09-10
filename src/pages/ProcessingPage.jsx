@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Eye, ShieldCheck, Sparkles } from 'lucide-react';
+import { Eye, ShieldCheck, Sparkles, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 import { predictFundusImage } from '../services/api';
 import { getErrorMessage } from '../utils/errorUtils';
 import './ProcessingPage.css';
@@ -18,6 +18,8 @@ export default function ProcessingPage() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const steps = [
     t('processing.step1') || 'Image received',
@@ -28,9 +30,16 @@ export default function ProcessingPage() {
     t('processing.step6') || 'Report preparation',
   ];
 
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setCurrentStep(0);
+    setProgress(0);
+    setRetryKey(prev => prev + 1);
+  }, []);
+
   useEffect(() => {
     let isCancelled = false;
-    const targetPatientId = selectedPatient?.patientId;
+    const targetPatientId = selectedPatient?.patientId || selectedPatient?.patient_id;
     if (!uploadedImage || !targetPatientId) {
       showToast('Select a patient and fundus image before analysis.', 'error');
       navigate('/screening');
@@ -59,23 +68,29 @@ export default function ProcessingPage() {
         if (isCancelled) return;
         setProgress(100);
         setCurrentStep(steps.length);
-        
-        // Ensure result contains the exact screeningId from backend
+
+        const finalScreeningId = result.screeningId || result.screening_id;
+        const patientName = selectedPatient?.fullName || selectedPatient?.full_name || 'Patient';
+
         setLatestResult({
           ...result,
+          screeningId: finalScreeningId,
+          screening_id: finalScreeningId,
           patientId: targetPatientId,
-          patientName: selectedPatient.fullName
+          patient_id: targetPatientId,
+          patientName
         });
 
         setTimeout(() => {
-          navigate(`/result/${result.screeningId}`);
+          navigate(`/result/${finalScreeningId}`);
         }, 400);
       })
-      .catch(error => {
+      .catch(err => {
         if (isCancelled) return;
-        console.error('Inference error:', error);
-        showToast(getErrorMessage(error), 'error');
-        navigate('/screening/upload');
+        const msg = getErrorMessage(err);
+        console.error('Inference error:', err);
+        setError(msg);
+        showToast(msg, 'error');
       })
       .finally(() => {
         clearInterval(progressInterval);
@@ -87,7 +102,7 @@ export default function ProcessingPage() {
       clearInterval(progressInterval);
       clearInterval(stepInterval);
     };
-  }, [navigate, steps.length, uploadedImage, selectedPatient, setLatestResult, showToast]);
+  }, [navigate, steps.length, uploadedImage, selectedPatient, setLatestResult, showToast, retryKey]);
 
   return (
     <div className="processing-page" id="processing-page">
@@ -110,28 +125,60 @@ export default function ProcessingPage() {
           </div>
         </div>
 
-        {/* Sequential Processing Steps */}
-        <div className="processing-steps">
-          {steps.map((step, i) => (
-            <div
-              key={i}
-              className={`processing-step ${i < currentStep ? 'step-done' : ''} ${i === currentStep ? 'step-active' : ''} ${i > currentStep ? 'step-pending' : ''}`}
-            >
-              <div className="step-dot">
-                {i < currentStep ? <ShieldCheck size={14} /> : null}
-                {i === currentStep ? <span className="step-spinner"></span> : null}
-              </div>
-              <span className="step-text">{step}</span>
+        {error ? (
+          <div className="processing-error-box animate-fade-in" id="processing-error-box">
+            <div className="processing-error-icon">
+              <AlertCircle size={36} color="var(--accent-danger, #e63946)" />
             </div>
-          ))}
-        </div>
+            <h3 className="processing-error-title">Analysis Incomplete</h3>
+            <p className="processing-error-message">{error}</p>
+            <div className="processing-error-actions">
+              <button
+                className="btn btn-primary"
+                onClick={handleRetry}
+                id="processing-retry-btn"
+                type="button"
+              >
+                <RefreshCw size={16} />
+                <span>Retry</span>
+              </button>
+              <button
+                className="btn btn-ghost"
+                onClick={() => navigate('/screening/upload')}
+                id="processing-back-btn"
+                type="button"
+              >
+                <ArrowLeft size={16} />
+                <span>Back to Upload</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Sequential Processing Steps */}
+            <div className="processing-steps">
+              {steps.map((step, i) => (
+                <div
+                  key={i}
+                  className={`processing-step ${i < currentStep ? 'step-done' : ''} ${i === currentStep ? 'step-active' : ''} ${i > currentStep ? 'step-pending' : ''}`}
+                >
+                  <div className="step-dot">
+                    {i < currentStep ? <ShieldCheck size={14} /> : null}
+                    {i === currentStep ? <span className="step-spinner"></span> : null}
+                  </div>
+                  <span className="step-text">{step}</span>
+                </div>
+              ))}
+            </div>
 
-        {/* Progress Bar */}
-        <div className="processing-progress-bar">
-          <div className="processing-progress-fill" style={{ width: `${progress}%` }}></div>
-        </div>
+            {/* Progress Bar */}
+            <div className="processing-progress-bar">
+              <div className="processing-progress-fill" style={{ width: `${progress}%` }}></div>
+            </div>
 
-        <p className="processing-hint">{t('processing.pleaseWait')}</p>
+            <p className="processing-hint">{t('processing.pleaseWait')}</p>
+          </>
+        )}
       </div>
     </div>
   );

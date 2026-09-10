@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     """
     APP_NAME: str = "Retina AI API"
     ENVIRONMENT: str = "development"
-    FRONTEND_ORIGIN: str = "http://localhost:5173"
+    FRONTEND_ORIGIN: str = "https://ai-ratina-kn7w.vercel.app"
 
     # MongoDB Atlas configuration
     MONGODB_URI: str = ""
@@ -42,21 +42,50 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> List[str]:
         """
-        Parses comma-separated or single FRONTEND_ORIGIN into a list of allowed origins.
+        Parses comma-separated or single FRONTEND_ORIGIN from environment into allowed origins list.
+        Always includes production Vercel frontend and local development origins.
         """
-        origins = [origin.strip() for origin in self.FRONTEND_ORIGIN.split(",") if origin.strip()]
-        # Always ensure localhost Vite origins are included for local development
-        common_dev_origins = [
+        origins: List[str] = []
+
+        # 1. Parse origins from FRONTEND_ORIGIN setting or environment variable
+        raw_env_origin = os.getenv("FRONTEND_ORIGIN") or self.FRONTEND_ORIGIN
+        if raw_env_origin:
+            for item in raw_env_origin.split(","):
+                cleaned = item.strip().rstrip("/")
+                if cleaned and cleaned not in origins:
+                    origins.append(cleaned)
+
+        # 2. Ensure production Vercel frontend is explicitly allowed
+        prod_origins = [
+            "https://ai-ratina-kn7w.vercel.app",
+        ]
+        for prod in prod_origins:
+            cleaned = prod.strip().rstrip("/")
+            if cleaned not in origins:
+                origins.append(cleaned)
+
+        # 3. Ensure localhost development origins are always supported
+        dev_origins = [
             "http://localhost:5173", "http://127.0.0.1:5173",
             "http://localhost:5174", "http://127.0.0.1:5174",
             "http://localhost:5175", "http://127.0.0.1:5175",
             "http://localhost:5176", "http://127.0.0.1:5176",
             "http://localhost:3000", "http://127.0.0.1:3000",
+            "http://localhost:8080", "http://127.0.0.1:8080",
         ]
-        for default_origin in common_dev_origins:
-            if default_origin not in origins:
-                origins.append(default_origin)
+        for dev in dev_origins:
+            cleaned = dev.strip().rstrip("/")
+            if cleaned not in origins:
+                origins.append(cleaned)
+
         return origins
+
+    @property
+    def cors_origin_regex(self) -> str:
+        """
+        Regex allowing any localhost/127.0.0.1 port and Vercel preview/production domains.
+        """
+        return r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://.*ai-ratina.*\.vercel\.app$"
 
     def model_post_init(self, __context: Any) -> None:
         for attr in ["MODEL_PATH", "UPLOAD_DIR", "GRADCAM_DIR", "REPORTS_DIR"]:

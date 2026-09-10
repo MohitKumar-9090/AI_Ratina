@@ -1,8 +1,19 @@
 import os
+import sys
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+# Configure standard stdout logging for backend and model diagnostic logs
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger("retina_ai")
+logger.setLevel(logging.INFO)
 
 from core.config import settings
 from core.database import connect_to_mongo, close_mongo_connection, is_mongo_connected

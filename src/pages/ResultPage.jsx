@@ -34,18 +34,34 @@ export default function ResultPage() {
   const [isLargeImageModalOpen, setIsLargeImageModalOpen] = useState(false);
 
   const predData = useMemo(() => {
-    if (latestResult) return latestResult;
+    // Only return latestResult if it matches the current screening ID in route (or if no ID specified)
+    if (latestResult && (!id || latestResult.screeningId === id || latestResult.screening_id === id)) {
+      return latestResult;
+    }
     if (id && screenings && screenings.length > 0) {
       const match = screenings.find(s => s.screeningId === id || s.screening_id === id);
       if (match) {
-        const stageNum = (match.drStage !== undefined && match.drStage !== null)
-          ? Number(match.drStage)
-          : (match.dr_stage !== undefined && match.dr_stage !== null)
-            ? Number(match.dr_stage)
-            : 0;
+        const parseStageVal = (val) => {
+          if (val === undefined || val === null) return null;
+          if (typeof val === 'number' && !isNaN(val)) return Math.max(0, Math.min(4, Math.floor(val)));
+          const cleaned = String(val).toLowerCase().replace(/[^0-9]/g, '');
+          const parsed = parseInt(cleaned, 10);
+          return !isNaN(parsed) ? Math.max(0, Math.min(4, parsed)) : null;
+        };
+        const stageNum = parseStageVal(match.drStageNumber) ?? parseStageVal(match.dr_stage) ?? parseStageVal(match.drStage) ?? 0;
         const defaultNames = { 0: 'No DR', 1: 'Mild DR', 2: 'Moderate DR', 3: 'Severe DR', 4: 'Proliferative DR' };
-        const label = match.drLabel || match.dr_label || match.drResult || match.dr_result || defaultNames[stageNum] || `Stage ${stageNum}`;
-        const cleanLabel = String(label).replace(/^Stage\s*\d+\s*[—–-]\s*/i, '');
+        let cleanLabel = defaultNames[stageNum];
+        const rawLabel = match.drLabel || match.dr_label || match.drResult || match.dr_result;
+        if (rawLabel) {
+          const stripped = String(rawLabel).replace(/^Stage\s*\d+\s*[—–-]\s*/i, '').trim();
+          if (stripped.toLowerCase() === 'severe') cleanLabel = 'Severe DR';
+          else if (stripped.toLowerCase() === 'mild') cleanLabel = 'Mild DR';
+          else if (stripped.toLowerCase() === 'moderate') cleanLabel = 'Moderate DR';
+          else if (stripped.toLowerCase() === 'proliferative') cleanLabel = 'Proliferative DR';
+          else if (stripped.toLowerCase() === 'no dr' || stripped.toLowerCase() === 'no') cleanLabel = 'No DR';
+          else if (stripped) cleanLabel = stripped;
+        }
+
         const rfmid = match.rfmidFindings || match.rfmid_findings || [];
         const odir = match.odirFindings || match.odir_findings || [];
         const combined = [...rfmid, ...odir].filter(f => f && String(f).toUpperCase() !== 'NORMAL');
@@ -96,19 +112,14 @@ export default function ResultPage() {
   };
 
   const stageNumber = useMemo(() => {
-    if (predData.drStageNumber !== undefined && predData.drStageNumber !== null) {
-      return Number(predData.drStageNumber);
-    }
-    if (predData.dr_stage !== undefined && predData.dr_stage !== null) {
-      return Number(predData.dr_stage);
-    }
-    if (predData.drStage !== undefined && predData.drStage !== null) {
-      if (typeof predData.drStage === 'number') return predData.drStage;
-      const str = String(predData.drStage).toLowerCase().replace('stage', '').trim();
-      const parsed = parseInt(str, 10);
-      if (!isNaN(parsed)) return parsed;
-    }
-    return 0;
+    const parseStageVal = (val) => {
+      if (val === undefined || val === null) return null;
+      if (typeof val === 'number' && !isNaN(val)) return Math.max(0, Math.min(4, Math.floor(val)));
+      const cleaned = String(val).toLowerCase().replace(/[^0-9]/g, '');
+      const parsed = parseInt(cleaned, 10);
+      return !isNaN(parsed) ? Math.max(0, Math.min(4, parsed)) : null;
+    };
+    return parseStageVal(predData.drStageNumber) ?? parseStageVal(predData.dr_stage) ?? parseStageVal(predData.drStage) ?? 0;
   }, [predData]);
 
   const drStageKey = `stage${stageNumber}`;

@@ -114,3 +114,23 @@ async def predict_fundus(
         created_at=now_iso,
         error=db_warning,
     )
+
+
+@router.post("/debug", status_code=status.HTTP_200_OK)
+async def predict_debug(
+    image: Optional[UploadFile] = File(None, description="Fundus image file"),
+    file: Optional[UploadFile] = File(None, description="Alternative field name for image file"),
+):
+    """
+    Temporary debug endpoint: Accepts fundus image and returns full DR class diagnostics
+    including raw logits, softmax probabilities, selected class, and clinical label.
+    """
+    upload_file = image or file
+    if not upload_file:
+        raise InvalidImageException("Image file is required (field 'image' or 'file')")
+
+    saved_path, image_url = await validate_and_save_image(upload_file, patient_id="debug")
+    diagnostic = prediction_service.diagnose_image(saved_path)
+    diagnostic["image_url"] = image_url
+    return diagnostic
+

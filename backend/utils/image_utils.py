@@ -100,8 +100,9 @@ async def validate_and_save_image(
             saved_filename = f"{clean_pid}_{unique_id}{ext}"
             saved_filepath = os.path.join(settings.UPLOAD_DIR, saved_filename)
 
-            # Save RGB image cleanly
-            rgb_image.save(saved_filepath, quality=95)
+            # Save original image bytes directly to disk without lossy re-compression
+            with open(saved_filepath, "wb") as f:
+                f.write(contents)
 
     except (InvalidImageException, FileSizeLimitExceededException):
         raise

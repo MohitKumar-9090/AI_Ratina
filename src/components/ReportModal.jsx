@@ -68,13 +68,14 @@ export default function ReportModal({
     }
   };
 
-  const stageNum = (screeningData.drStageNumber !== undefined && screeningData.drStageNumber !== null)
-    ? Number(screeningData.drStageNumber)
-    : (screeningData.dr_stage !== undefined && screeningData.dr_stage !== null)
-      ? Number(screeningData.dr_stage)
-      : (typeof screeningData.drStage === 'number')
-        ? screeningData.drStage
-        : parseInt(String(screeningData.drStage || '').replace('stage', ''), 10) || 0;
+  const parseStageVal = (val) => {
+    if (val === undefined || val === null) return null;
+    if (typeof val === 'number' && !isNaN(val)) return Math.max(0, Math.min(4, Math.floor(val)));
+    const cleaned = String(val).toLowerCase().replace(/[^0-9]/g, '');
+    const parsed = parseInt(cleaned, 10);
+    return !isNaN(parsed) ? Math.max(0, Math.min(4, parsed)) : null;
+  };
+  const stageNum = parseStageVal(screeningData.drStageNumber) ?? parseStageVal(screeningData.dr_stage) ?? parseStageVal(screeningData.drStage) ?? 0;
 
   const stageNames = { 0: 'No DR', 1: 'Mild DR', 2: 'Moderate DR', 3: 'Severe DR', 4: 'Proliferative DR' };
   const resolvedStageLabel = screeningData.drStageLabel || `Stage ${stageNum} — ${stageNames[stageNum] || 'No DR'}`;

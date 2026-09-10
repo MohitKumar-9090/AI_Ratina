@@ -121,9 +121,27 @@ export async function predictFundusImage(image, patientId) {
       3: 'Severe DR',
       4: 'Proliferative DR'
     };
-    const drStageNum = data.drStage ?? data.dr_stage ?? data.dr?.stage ?? 0;
-    const rawLabel = data.drLabel || data.dr_label || data.dr?.label || data.dr?.result || DR_DEFAULT_LABELS[drStageNum] || `Stage ${drStageNum}`;
-    const cleanLabel = String(rawLabel).replace(/^Stage\s*\d+\s*[—–-]\s*/i, '');
+
+    const parseStage = (val) => {
+      if (val === undefined || val === null) return null;
+      if (typeof val === 'number' && !isNaN(val)) return Math.max(0, Math.min(4, Math.floor(val)));
+      const cleaned = String(val).toLowerCase().replace(/[^0-9]/g, '');
+      const parsed = parseInt(cleaned, 10);
+      return !isNaN(parsed) ? Math.max(0, Math.min(4, parsed)) : null;
+    };
+
+    const drStageNum = parseStage(data.drStage) ?? parseStage(data.dr_stage) ?? parseStage(data.dr?.stage) ?? 0;
+    let cleanLabel = DR_DEFAULT_LABELS[drStageNum];
+    const rawLabel = data.drLabel || data.dr_label || data.dr?.label || data.dr?.result;
+    if (rawLabel) {
+      const stripped = String(rawLabel).replace(/^Stage\s*\d+\s*[—–-]\s*/i, '').trim();
+      if (stripped.toLowerCase() === 'severe') cleanLabel = 'Severe DR';
+      else if (stripped.toLowerCase() === 'mild') cleanLabel = 'Mild DR';
+      else if (stripped.toLowerCase() === 'moderate') cleanLabel = 'Moderate DR';
+      else if (stripped.toLowerCase() === 'proliferative') cleanLabel = 'Proliferative DR';
+      else if (stripped.toLowerCase() === 'no dr' || stripped.toLowerCase() === 'no') cleanLabel = 'No DR';
+      else if (stripped) cleanLabel = stripped;
+    }
     const drStageLabel = `Stage ${drStageNum} — ${cleanLabel}`;
 
     return {

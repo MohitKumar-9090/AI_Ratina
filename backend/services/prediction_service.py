@@ -215,8 +215,9 @@ class PredictionService:
             self._param_count = sum(p.numel() for p in self._model.parameters())
 
             logger.info("RetinaAIV4 checkpoint loaded successfully.")
-            logger.info(
-                f"\n--- [MODEL LOAD DIAGNOSTIC] ---\n"
+            diagnostic_msg = (
+                f"\n=======================================================\n"
+                f"--- [MODEL LOAD DIAGNOSTIC] ---\n"
                 f"Model path: {target_path}\n"
                 f"Checkpoint exists: {os.path.exists(target_path)}\n"
                 f"Missing keys: {load_result.missing_keys}\n"
@@ -224,8 +225,10 @@ class PredictionService:
                 f"Device: {self._device}\n"
                 f"model.eval() status: training={self._model.training} (eval mode active={not self._model.training})\n"
                 f"Total Parameters: {self._param_count}\n"
-                f"--------------------------------"
+                f"======================================================="
             )
+            logger.info(diagnostic_msg)
+            print(diagnostic_msg, flush=True)
 
         except Exception as e:
             logger.error(f"Failed to load model: {e}", exc_info=True)
@@ -438,8 +441,10 @@ class PredictionService:
             # --- INTERNAL DIAGNOSTIC LOG (DEVELOPMENT-ONLY) ---
             rfmid_preds = torch.sigmoid(rfmid_logits).squeeze(0)
             odir_preds = torch.sigmoid(odir_logits).squeeze(0)
-            logger.info(
-                f"\n--- [DIABETIC RETINOPATHY DIAGNOSTIC LOG] ---\n"
+            diagnostic_msg = (
+                f"\n=======================================================\n"
+                f"--- [DIABETIC RETINOPATHY DIAGNOSTIC LOG] ---\n"
+                f"Image: {os.path.basename(image_path)}\n"
                 f"DR logits: {[round(x, 4) for x in dr_logits_list]}\n"
                 f"DR probabilities:\n"
                 f"  0 No DR: {dr_probs[0]:.4f}\n"
@@ -449,23 +454,25 @@ class PredictionService:
                 f"  4 Proliferative DR: {dr_probs[4]:.4f}\n"
                 f"Selected DR class: {dr_stage}\n"
                 f"Selected DR label: {dr_label}\n"
-                f"\nRFMiD:\n"
-                f"ARMD/AMD = {rfmid_preds[0].item():.4f}\n"
-                f"BRVO = {rfmid_preds[1].item():.4f}\n"
-                f"ODC = {rfmid_preds[2].item():.4f}\n\n"
-                f"ODIR:\n"
-                f"Normal = {odir_preds[0].item():.4f}\n"
-                f"Diabetes = {odir_preds[1].item():.4f}\n"
-                f"Glaucoma = {odir_preds[2].item():.4f}\n"
-                f"Cataract = {odir_preds[3].item():.4f}\n"
-                f"AMD = {odir_preds[4].item():.4f}\n"
-                f"Hypertension = {odir_preds[5].item():.4f}\n"
-                f"Myopia = {odir_preds[6].item():.4f}\n"
-                f"Other = {odir_preds[7].item():.4f}\n\n"
+                f"\nRFMiD probabilities:\n"
+                f"  ARMD/AMD = {rfmid_preds[0].item():.4f}\n"
+                f"  BRVO = {rfmid_preds[1].item():.4f}\n"
+                f"  ODC = {rfmid_preds[2].item():.4f}\n\n"
+                f"ODIR probabilities:\n"
+                f"  Normal = {odir_preds[0].item():.4f}\n"
+                f"  Diabetes = {odir_preds[1].item():.4f}\n"
+                f"  Glaucoma = {odir_preds[2].item():.4f}\n"
+                f"  Cataract = {odir_preds[3].item():.4f}\n"
+                f"  AMD = {odir_preds[4].item():.4f}\n"
+                f"  Hypertension = {odir_preds[5].item():.4f}\n"
+                f"  Myopia = {odir_preds[6].item():.4f}\n"
+                f"  Other = {odir_preds[7].item():.4f}\n\n"
                 f"Selected RFMiD findings: {rfmid_findings}\n"
                 f"Selected ODIR findings: {odir_findings}\n"
-                f"----------------------------------------------"
+                f"======================================================="
             )
+            logger.info(diagnostic_msg)
+            print(diagnostic_msg, flush=True)
 
             # Build image URL from saved path
             filename = os.path.basename(image_path)
@@ -512,6 +519,42 @@ class PredictionService:
                 "error": f"Inference error: {str(e)}",
             }
 
+    def diagnose_image(self, image_path: str) -> Dict[str, Any]:
+        """
+        Runs inference and returns raw DR logits, softmax probabilities,
+        selected class, and clinical label for auditing and debugging.
+        """
+        if not self._is_loaded or self._model is None:
+            return {
+                "success": False,
+                "error": "Model is not loaded."
+            }
+
+        input_tensor, _ = self._preprocess_image(image_path)
+
+        with torch.no_grad():
+            dr_logits, rfmid_logits, odir_logits = self._model(input_tensor)
+
+        dr_probs = torch.softmax(dr_logits, dim=1).squeeze(0).tolist()
+        dr_logits_list = dr_logits.squeeze(0).tolist()
+        dr_stage = int(torch.argmax(dr_logits, dim=1).item())
+        dr_label = DR_LABELS.get(dr_stage, "Unknown")
+
+        return {
+            "success": True,
+            "image": os.path.basename(image_path),
+            "dr_logits": [round(x, 4) for x in dr_logits_list],
+            "dr_probabilities": {
+                f"{c} {DR_LABELS[c]}": round(dr_probs[c], 4) for c in range(5)
+            },
+            "selected_dr_class": dr_stage,
+            "selected_dr_label": dr_label,
+            "model_path": settings.MODEL_PATH,
+            "device": self._device,
+            "model_eval": not self._model.training,
+        }
+
 
 # Module-level singleton
 prediction_service = PredictionService()
+

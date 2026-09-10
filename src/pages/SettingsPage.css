@@ -1,0 +1,275 @@
+/* ========================================================
+   Retina AI — Settings & About Page Styles
+   ======================================================== */
+
+.settings-stack {
+  margin-top: 8px;
+}
+
+.settings-card {
+  padding: 20px 24px;
+  border-radius: var(--radius-lg) !important;
+}
+
+/* Settings Row */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-row-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.settings-icon {
+  color: var(--accent-primary);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.alert-icon {
+  color: var(--accent-alert);
+}
+
+.settings-label {
+  display: block;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.settings-desc {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Section Wrapper */
+.settings-section-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-section-title h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.settings-text-block {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Status Pill */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-pill-online {
+  background: rgba(6, 214, 160, 0.15);
+  color: #059669;
+  border: 1px solid rgba(6, 214, 160, 0.3);
+}
+
+.status-pill-offline {
+  background: rgba(46, 196, 182, 0.12);
+  color: var(--accent-primary);
+  border: 1px solid rgba(46, 196, 182, 0.25);
+}
+
+.status-indicator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s infinite;
+}
+
+/* Model Details Box */
+.model-details-box {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+[data-theme="dark"] .model-details-box {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.model-detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.model-detail-item strong {
+  color: var(--text-primary);
+  min-width: 140px;
+}
+
+.model-detail-item code {
+  font-family: monospace;
+  background: rgba(46, 196, 182, 0.15);
+  color: var(--accent-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* Report Configuration Form */
+.report-config-form {
+  margin-top: 8px;
+}
+
+.report-config-form .form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .report-config-form .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* MongoDB Status Box */
+.mongodb-details-box {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(46, 196, 182, 0.06);
+  border: 1px solid rgba(46, 196, 182, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mongo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  flex-wrap: wrap;
+}
+
+.mongo-icon {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.mongo-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mongo-val {
+  color: var(--text-secondary);
+}
+
+.mongo-val code {
+  font-family: monospace;
+  background: rgba(46, 196, 182, 0.15);
+  color: var(--accent-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.775rem;
+}
+
+.mongo-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Disclaimer settings card */
+.disclaimer-settings-card {
+  border-left: 4px solid var(--accent-alert);
+}
+
+.disclaimer-text {
+  color: var(--text-secondary);
+}
+
+/* Language Toggle Buttons */
+.lang-toggle-group {
+  display: flex;
+  gap: 6px;
+  background: var(--glass-bg);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+}
+
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.lang-active {
+  background: var(--accent-primary);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 10px var(--accent-primary-glow);
+}
+
+@media (max-width: 600px) {
+  .settings-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .model-detail-item {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .model-detail-item strong {
+    min-width: auto;
+  }
+
+  .lang-toggle-group {
+    width: 100%;
+  }
+
+  .lang-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}

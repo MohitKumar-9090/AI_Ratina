@@ -1,0 +1,70 @@
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from core.database import get_screenings_collection, is_mongo_connected
+from core.exceptions import ResourceNotFoundException, ServiceUnavailableException
+from schemas.screening import ScreeningCreate
+from services.patient_service import patient_service
+
+
+class ScreeningService:
+    """Completed real model results, persisted only in MongoDB."""
+
+    @staticmethod
+    def _collection():
+        if not is_mongo_connected():
+            raise ServiceUnavailableException('Screening records are unavailable because MongoDB is disconnected.')
+        collection = get_screenings_collection()
+        if collection is None:
+            raise ServiceUnavailableException('Screening records are unavailable because MongoDB is disconnected.')
+        return collection
+
+    @staticmethod
+    def _clean(document: Dict[str, Any]) -> Dict[str, Any]:
+        document = dict(document); document.pop('_id', None); return document
+
+    async def get_all(self, patient_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        query = {} if not patient_id else {'$or': [{'patient_id': patient_id}, {'patientId': patient_id}]}
+        return [self._clean(document) for document in self._collection().find(query, {'_id': 0}).sort('created_at', -1)]
+
+    async def get_by_id(self, screening_id: str) -> Dict[str, Any]:
+        document = self._collection().find_one({'$or': [{'screening_id': screening_id}, {'screeningId': screening_id}]}, {'_id': 0})
+        if not document:
+            raise ResourceNotFoundException(f"Screening with ID '{screening_id}' was not found.")
+        return self._clean(document)
+
+    async def create(self, data: ScreeningCreate) -> Dict[str, Any]:
+        await patient_service.get_by_id(data.patient_id)
+        screening_id = data.screening_id or f'SCR-{uuid.uuid4().hex[:12].upper()}'
+        now = datetime.now(timezone.utc).isoformat()
+        record = data.model_dump(by_alias=False, exclude_none=True)
+        record.update({
+            'screening_id': screening_id,
+            'screeningId': screening_id,
+            'created_at': now,
+            'createdAt': now,
+            'patient_id': data.patient_id,
+            'patientId': data.patient_id,
+            'dr_stage': data.dr_stage,
+            'drStage': data.dr_stage,
+            'dr_label': data.dr_label or data.dr_result,
+            'drLabel': data.dr_label or data.dr_result,
+            'dr_result': data.dr_result or data.dr_label,
+            'drResult': data.dr_result or data.dr_label,
+            'rfmid_findings': data.rfmid_findings,
+            'rfmidFindings': data.rfmid_findings,
+            'odir_findings': data.odir_findings,
+            'odirFindings': data.odir_findings,
+            'image_url': data.image_url,
+            'imageUrl': data.image_url,
+            'gradcam_url': data.gradcam_url,
+            'gradcamUrl': data.gradcam_url,
+            'screening_date': data.screening_date,
+            'screeningDate': data.screening_date
+        })
+        self._collection().insert_one(record)
+        return self._clean(record)
+
+
+screening_service = ScreeningService()

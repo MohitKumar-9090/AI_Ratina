@@ -1,0 +1,36 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Secrets and generated clinical assets
+.env
+.env.local
+backend/.env
+*.pth
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/gradcam/*
+!backend/gradcam/.gitkeep
+backend/reports/*
+!backend/reports/.gitkeep
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

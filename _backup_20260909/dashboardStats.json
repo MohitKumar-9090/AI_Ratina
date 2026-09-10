@@ -1,0 +1,29 @@
+{
+  "totalScreenings": 847,
+  "thisMonth": 124,
+  "drPositiveRate": 34.2,
+  "referralsMade": 42,
+  "avgConfidence": 88.5,
+  "monthlyData": [
+    { "month": "Mar", "screenings": 68, "drPositive": 22 },
+    { "month": "Apr", "screenings": 85, "drPositive": 28 },
+    { "month": "May", "screenings": 92, "drPositive": 30 },
+    { "month": "Jun", "screenings": 110, "drPositive": 38 },
+    { "month": "Jul", "screenings": 105, "drPositive": 35 },
+    { "month": "Aug", "screenings": 118, "drPositive": 41 },
+    { "month": "Sep", "screenings": 124, "drPositive": 42 }
+  ],
+  "villageBreakdown": [
+    { "village": "Sundarnagar", "total": 245, "drPositive": 82 },
+    { "village": "Chandpur", "total": 198, "drPositive": 65 },
+    { "village": "Rampur", "total": 210, "drPositive": 74 },
+    { "village": "Biharipur", "total": 194, "drPositive": 68 }
+  ],
+  "severityDistribution": [
+    { "grade": "No DR", "count": 558, "color": "#06D6A0" },
+    { "grade": "Mild", "count": 112, "color": "#2EC4B6" },
+    { "grade": "Moderate", "count": 98, "color": "#FFD166" },
+    { "grade": "Severe", "count": 52, "color": "#FF6B6B" },
+    { "grade": "Proliferative", "count": 27, "color": "#D62828" }
+  ]
+}

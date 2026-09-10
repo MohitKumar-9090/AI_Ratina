@@ -1,0 +1,541 @@
+/* ========================================================
+   Retina AI — Polished Result Page Styles
+   ======================================================== */
+
+.result-header {
+  margin-bottom: 16px;
+}
+
+.result-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.generate-report-btn {
+  background: linear-gradient(180deg, #38d6c7 0%, #1ea89b 50%, #127e72 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 26px var(--accent-primary-glow), inset 0 1px 1.5px rgba(255, 255, 255, 0.5);
+}
+
+.generate-report-btn:hover {
+  box-shadow: 0 12px 32px var(--accent-primary-glow), 0 0 18px rgba(46, 196, 182, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.7);
+  filter: brightness(1.02);
+}
+
+/* Patient Banner */
+.result-patient-banner {
+  padding: 16px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  border-radius: var(--radius-md) !important;
+  border-top-color: var(--glass-border-light);
+  box-shadow: var(--glass-shadow);
+}
+
+.patient-banner-cluster {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.patient-banner-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(46, 196, 182, 0.16);
+  color: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patient-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.banner-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.banner-patient-label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.banner-patient-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.banner-patient-id {
+  font-family: monospace;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: rgba(46, 196, 182, 0.12);
+  color: var(--accent-primary);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.banner-meta-row {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.banner-date-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+/* 2-Column Result Grid */
+.result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  align-items: start;
+}
+
+.result-card {
+  padding: 22px;
+  border-radius: var(--radius-lg) !important;
+}
+
+.card-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-top-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-top-title h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sparkle-icon,
+.section-icon {
+  color: var(--accent-primary);
+}
+
+.tech-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(46, 196, 182, 0.12);
+  color: var(--accent-primary);
+  border: 1px solid rgba(46, 196, 182, 0.2);
+}
+
+/* Attention Map Comparison Grid */
+.attention-comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.comp-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comp-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.comp-img-frame {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  background: #060a0f;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.comp-img-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comp-heatmap-frame .base-underlay {
+  opacity: 0.7;
+}
+
+.comp-heatmap-frame .heatmap-overlay {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: screen;
+  opacity: 0.85;
+}
+
+.attention-short-explanation {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.attention-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* DR Prominent Card (ZERO percentages shown) */
+.dr-prominent-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dr-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sub-label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dr-stage-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.dr-stage-desc-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.dr-single-stage-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(46, 196, 182, 0.10);
+  border: 1px solid rgba(46, 196, 182, 0.35);
+  border-radius: var(--radius-sm);
+  margin-top: 6px;
+}
+
+.single-stage-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 12px var(--accent-primary-glow);
+}
+
+.single-stage-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.single-stage-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-primary);
+}
+
+.single-stage-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dr-stage-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.stage-row-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+[data-theme="dark"] .stage-row-item {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.stage-num-box {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--glass-border);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stage-row-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+}
+
+.stage-row-text strong {
+  color: var(--text-primary);
+}
+
+.stage-row-text span {
+  color: var(--text-muted);
+}
+
+.stage-row-selected {
+  background: rgba(46, 196, 182, 0.12) !important;
+  border-color: rgba(46, 196, 182, 0.4);
+}
+
+.stage-row-selected .stage-num-box {
+  background: var(--accent-primary);
+  color: white;
+  box-shadow: 0 0 10px var(--accent-primary-glow);
+}
+
+.stage-row-selected .stage-row-text strong {
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+/* Secondary Findings */
+.secondary-findings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.finding-pill-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm) !important;
+}
+
+.finding-label-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.finding-status-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
+
+.no-findings-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm) !important;
+  background: rgba(6, 214, 160, 0.08);
+  border: 1px solid rgba(6, 214, 160, 0.25);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #06d6a0;
+}
+
+.no-findings-icon {
+  color: #06d6a0;
+  flex-shrink: 0;
+}
+
+.finding-detected-card {
+  border-left: 3px solid #ffd166;
+}
+
+.status-badge-possible {
+  background: rgba(255, 209, 102, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(255, 209, 102, 0.3);
+}
+
+[data-theme="dark"] .status-badge-possible {
+  color: #ffd166;
+}
+
+/* Summary Card */
+.summary-section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.summary-field-title {
+  font-weight: 700;
+  color: var(--text-secondary);
+  min-width: 170px;
+}
+
+.summary-field-value {
+  color: var(--text-primary);
+}
+
+.highlight-step-field .summary-field-value {
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+/* Result Actions Bar */
+.result-actions-bar {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+/* Medical Notice Banner */
+.medical-notice-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  margin-top: 24px;
+  border-radius: var(--radius-md) !important;
+  background: rgba(46, 196, 182, 0.08);
+  border: 1px solid rgba(46, 196, 182, 0.25);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.notice-icon {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+/* Large Image Modal */
+.large-img-modal {
+  max-width: 960px;
+  max-height: 90vh;
+}
+
+.large-img-comparison {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.large-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.large-box span {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.large-box img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+}
+
+@media (max-width: 900px) {
+  .result-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .large-img-comparison {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .attention-comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .result-patient-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .summary-field {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .summary-field-title {
+    min-width: auto;
+  }
+
+  .result-actions-bar {
+    flex-direction: column;
+  }
+}

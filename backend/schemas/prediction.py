@@ -43,7 +43,11 @@ class PredictionResponse(BaseModel):
     odir_findings: list[str] = Field(default_factory=list, alias="odirFindings")
     findings: Optional[Any] = None
     image_url: str = ""
+    imageUrl: Optional[str] = None
     gradcam_url: Optional[str] = None
+    gradcamUrl: Optional[str] = None
+    gradcam_status: Optional[str] = "processing"
+    gradcamStatus: Optional[str] = "processing"
     created_at: str = ""
     error: Optional[str] = None
 

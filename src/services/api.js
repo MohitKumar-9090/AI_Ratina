@@ -72,6 +72,36 @@ export const fetchReports = () => request('/api/reports');
 export const fetchReportById = (reportId) => request(`/api/reports/${encodeURIComponent(reportId)}`);
 export const createReport = (screeningId, reportData) => request(`/api/reports/${encodeURIComponent(screeningId)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reportData) });
 
+export const resolveUrl = (url) => {
+  if (!url) return null;
+  if (typeof url !== 'string') return null;
+  return url.startsWith('http://') || url.startsWith('https://') ? url : `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+export async function generateScreeningGradCam(screeningId) {
+  if (!screeningId) throw new Error('Screening ID is required for Grad-CAM generation.');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+  try {
+    const data = await request(`/api/screenings/${encodeURIComponent(screeningId)}/gradcam`, {
+      method: 'POST',
+      signal: controller.signal
+    });
+    const fullUrl = resolveUrl(data?.gradcam_url || data?.gradcamUrl);
+    return {
+      success: !!data?.success,
+      screeningId: data?.screening_id || screeningId,
+      gradcamUrl: fullUrl,
+      gradcam_url: fullUrl,
+      gradcamStatus: data?.gradcam_status || (fullUrl ? 'completed' : 'failed'),
+      gradcam_status: data?.gradcam_status || (fullUrl ? 'completed' : 'failed'),
+      error: data?.error || null
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function predictFundusImage(image, patientId) {
   if (!(image instanceof File || image instanceof Blob)) throw new Error('Select a valid fundus image before analysis.');
   if (!patientId) throw new Error('Select a patient before analysis.');
@@ -124,15 +154,9 @@ export async function predictFundusImage(image, patientId) {
       statusKey: 'detected'
     }));
 
-    // Grad-CAM and Image URLs normalization (handle relative and absolute URLs)
-    const resolveUrl = (url) => {
-      if (!url) return null;
-      if (typeof url !== 'string') return null;
-      return url.startsWith('http://') || url.startsWith('https://') ? url : `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
-    };
-
     const gradcamFullUrl = resolveUrl(data.gradcam_url || data.gradcamUrl);
     const imageFullUrl = resolveUrl(data.image_url || data.imageUrl);
+    const gradcamStatus = data.gradcam_status || data.gradcamStatus || (gradcamFullUrl ? 'completed' : 'processing');
 
     const DR_DEFAULT_LABELS = {
       0: 'No DR',
@@ -185,6 +209,8 @@ export async function predictFundusImage(image, patientId) {
       heatmapDataUrl: gradcamFullUrl,
       gradcamUrl: gradcamFullUrl,
       gradcam_url: gradcamFullUrl,
+      gradcamStatus: gradcamStatus,
+      gradcam_status: gradcamStatus,
       explanation: 'Highlighted regions in the attention map contributed to the diabetic retinopathy classification.',
       recommendedNextStep: drStageNum >= 2
         ? 'Further evaluation by an eye-care professional is recommended.'

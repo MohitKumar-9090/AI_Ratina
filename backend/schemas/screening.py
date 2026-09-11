@@ -11,7 +11,10 @@ class ScreeningBase(BaseModel):
     rfmid_findings: list[str] = Field(default_factory=list, alias="rfmidFindings", description="RFMiD multi-label findings")
     odir_findings: list[str] = Field(default_factory=list, alias="odirFindings", description="ODIR multi-label findings")
     findings: Optional[Dict[str, Any]] = Field(None, description="Multi-label secondary condition findings")
-    gradcam_url: Optional[str] = Field(None, alias="gradcamUrl", description="Grad-CAM visualization URL, null until model is connected")
+    gradcam_url: Optional[str] = None
+    gradcamUrl: Optional[str] = None
+    gradcam_status: Optional[str] = "processing"
+    gradcamStatus: Optional[str] = "processing"
     screening_date: Optional[str] = Field(None, alias="screeningDate", description="Date of screening examination (YYYY-MM-DD)")
 
     model_config = ConfigDict(

@@ -396,10 +396,10 @@ class PredictionService:
             del feat_var, p_cam, out_cam, target
             gc.collect()
 
-    async def predict(self, image_path: str, patient_id: str = "") -> Dict[str, Any]:
+    async def predict_fast(self, image_path: str, patient_id: str = "") -> Dict[str, Any]:
         """
-        Runs full inference on a fundus image and returns clinical results and real Grad-CAM.
-        Serialized through asyncio.Lock to prevent concurrent memory spikes on Render.
+        Runs ultra-fast model inference on a fundus image without waiting for Grad-CAM.
+        Returns clinical results (DR stage + secondary findings) in < 0.25 seconds.
         """
         if not self._is_loaded or self._model is None:
             return {
@@ -410,21 +410,15 @@ class PredictionService:
 
         async with self._lock:
             try:
-                # Preprocess image
-                input_tensor, preview_img = self._preprocess_image(image_path)
+                # Preprocess image for 224x224 inference
+                input_tensor, _ = self._preprocess_image(image_path)
                 log_memory("AFTER IMAGE LOAD MEMORY")
 
-                # Generate a unique screening ID for this prediction to save Grad-CAM
                 screening_id = f"SCR-{uuid.uuid4().hex[:8].upper()}"
 
-                # --- NORMAL INFERENCE ---
+                # --- MODEL FORWARD PASS ONLY ---
                 with torch.no_grad():
-                    features = self._model.features(input_tensor)
-                    pooled = self._model.avgpool(features)
-                    flat = pooled.flatten(1)
-                    dr_logits = self._model.dr_head(flat)
-                    rfmid_logits = self._model.rfmid_head(flat)
-                    odir_logits = self._model.odir_head(flat)
+                    dr_logits, rfmid_logits, odir_logits = self._model(input_tensor)
 
                     # DR classification (mutually-exclusive argmax)
                     dr_stage = torch.argmax(dr_logits, dim=1).item()
@@ -435,11 +429,9 @@ class PredictionService:
                     # Secondary findings (multilabel sigmoid with 0.5 threshold)
                     rfmid_findings, odir_findings, findings = self._interpret_findings(rfmid_logits, odir_logits)
 
-                    # Clone feature map for Grad-CAM
-                    feat_for_cam = features.clone()
-
-                # Free forward inference tensors
-                del input_tensor, features, pooled, flat, dr_logits, rfmid_logits, odir_logits
+                # Free tensors immediately
+                del input_tensor, dr_logits, rfmid_logits, odir_logits
+                gc.collect()
                 log_memory("AFTER MODEL INFERENCE MEMORY")
                 print("MODEL INFERENCE COMPLETE", flush=True)
 
@@ -464,25 +456,8 @@ class PredictionService:
                 logger.info(diagnostic_msg)
                 print(diagnostic_msg, flush=True)
 
-                # Build image URL from saved path
                 filename = os.path.basename(image_path)
                 image_url = f"/uploads/{filename}"
-
-                # --- GRAD-CAM GENERATION ---
-                gradcam_url = self._generate_gradcam(
-                    feature_map=feat_for_cam,
-                    target_class=dr_stage,
-                    preview_img=preview_img,
-                    screening_id=screening_id
-                )
-                del feat_for_cam
-                log_memory("AFTER GRADCAM MEMORY")
-                print("GRADCAM COMPLETE", flush=True)
-
-                # Grad-CAM is supplementary — its failure must NOT prevent
-                # returning a successful prediction result to the user.
-                if gradcam_url is None:
-                    logger.warning("Grad-CAM generation failed; prediction result is still valid.")
 
                 return {
                     "success": True,
@@ -501,7 +476,8 @@ class PredictionService:
                     "odir_findings": odir_findings,
                     "findings": findings,
                     "image_url": image_url,
-                    "gradcam_url": gradcam_url,
+                    "gradcam_url": None,
+                    "gradcam_status": "processing",
                 }
 
             except Exception as e:
@@ -510,6 +486,66 @@ class PredictionService:
                     "success": False,
                     "error": f"Inference error: {str(e)}",
                 }
+
+    async def generate_gradcam_for_screening(
+        self,
+        image_path: str,
+        target_class: int,
+        screening_id: str
+    ) -> Optional[str]:
+        """
+        Generates real Grad-CAM for a screening on demand.
+        Serialized through self._lock to ensure memory safety on Render.
+        """
+        gradcam_filename = f"gradcam_{screening_id}.jpg"
+        gradcam_filepath = os.path.join(settings.GRADCAM_DIR, gradcam_filename)
+        if os.path.exists(gradcam_filepath):
+            return f"/gradcam/{gradcam_filename}"
+
+        if not self._is_loaded or self._model is None:
+            logger.error("Model is not loaded. Cannot generate Grad-CAM.")
+            return None
+
+        async with self._lock:
+            try:
+                # Preprocess image and generate bounded preview
+                input_tensor, preview_img = self._preprocess_image(image_path)
+
+                # Extract feature map under no_grad
+                with torch.no_grad():
+                    features = self._model.features(input_tensor)
+                    feat_for_cam = features.clone()
+
+                del input_tensor, features
+
+                # Generate Grad-CAM via direct feature autograd
+                gradcam_url = self._generate_gradcam(
+                    feature_map=feat_for_cam,
+                    target_class=target_class,
+                    preview_img=preview_img,
+                    screening_id=screening_id
+                )
+                del feat_for_cam
+                return gradcam_url
+
+            except Exception as e:
+                logger.error(f"generate_gradcam_for_screening failed: {e}", exc_info=True)
+                return None
+
+    async def predict(self, image_path: str, patient_id: str = "") -> Dict[str, Any]:
+        """
+        Full combined inference and Grad-CAM for backward compatibility.
+        """
+        result = await self.predict_fast(image_path, patient_id)
+        if not result.get("success"):
+            return result
+
+        screening_id = result.get("screening_id")
+        dr_stage = result.get("dr_stage", 0)
+        gradcam_url = await self.generate_gradcam_for_screening(image_path, dr_stage, screening_id)
+        result["gradcam_url"] = gradcam_url
+        result["gradcam_status"] = "completed" if gradcam_url else "failed"
+        return result
 
     def diagnose_image(self, image_path: str) -> Dict[str, Any]:
         """

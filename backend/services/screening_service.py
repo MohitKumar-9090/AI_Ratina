@@ -61,6 +61,8 @@ class ScreeningService:
             'imageUrl': data.image_url,
             'gradcam_url': data.gradcam_url,
             'gradcamUrl': data.gradcam_url,
+            'gradcam_status': data.gradcam_status or ('completed' if data.gradcam_url else 'processing'),
+            'gradcamStatus': data.gradcam_status or ('completed' if data.gradcam_url else 'processing'),
             'screening_date': data.screening_date,
             'screeningDate': data.screening_date
         })
@@ -74,6 +76,30 @@ class ScreeningService:
             mark_mongo_failure()
             raise ServiceUnavailableException('Failed to persist screening due to database connection error.') from err
         return self._clean(record)
+
+    async def update_gradcam(self, screening_id: str, gradcam_url: Optional[str], gradcam_status: str) -> Dict[str, Any]:
+        update_fields: Dict[str, Any] = {
+            'gradcam_status': gradcam_status,
+            'gradcamStatus': gradcam_status,
+        }
+        if gradcam_url is not None:
+            update_fields['gradcam_url'] = gradcam_url
+            update_fields['gradcamUrl'] = gradcam_url
+
+        try:
+            result = self._collection().find_one_and_update(
+                {'$or': [{'screening_id': screening_id}, {'screeningId': screening_id}]},
+                {'$set': update_fields},
+                return_document=True
+            )
+            mark_mongo_success()
+        except (ConnectionFailure, ServerSelectionTimeoutError) as err:
+            mark_mongo_failure()
+            raise ServiceUnavailableException('Failed to update Grad-CAM due to database connection error.') from err
+
+        if not result:
+            raise ResourceNotFoundException(f"Screening with ID '{screening_id}' was not found.")
+        return self._clean(result)
 
 
 screening_service = ScreeningService()

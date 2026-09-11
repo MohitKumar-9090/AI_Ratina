@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Info
 } from 'lucide-react';
+import { generateScreeningGradCam } from '../services/api';
 import './ResultPage.css';
 
 export default function ResultPage() {
@@ -32,6 +33,8 @@ export default function ResultPage() {
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isLargeImageModalOpen, setIsLargeImageModalOpen] = useState(false);
+  const [asyncGradcamUrl, setAsyncGradcamUrl] = useState(null);
+  const [gradcamStatus, setGradcamStatus] = useState('processing');
 
   const predData = useMemo(() => {
     // Only return latestResult if it matches the current screening ID in route (or if no ID specified)
@@ -89,7 +92,41 @@ export default function ResultPage() {
     if (!predData) {
       showToast('No active screening result found.', 'error');
       navigate('/dashboard');
+      return;
     }
+
+    const existing = predData.heatmapDataUrl || predData.gradcamUrl || predData.gradcam_url;
+    if (existing) {
+      setAsyncGradcamUrl(existing);
+      setGradcamStatus('completed');
+      return;
+    }
+
+    const targetScreeningId = predData.screeningId || predData.screening_id;
+    if (!targetScreeningId) return;
+
+    let isMounted = true;
+    setGradcamStatus('processing');
+
+    generateScreeningGradCam(targetScreeningId)
+      .then(res => {
+        if (!isMounted) return;
+        if (res?.gradcamUrl) {
+          setAsyncGradcamUrl(res.gradcamUrl);
+          setGradcamStatus('completed');
+        } else {
+          setGradcamStatus('failed');
+        }
+      })
+      .catch(err => {
+        if (!isMounted) return;
+        console.warn('Asynchronous Grad-CAM generation could not be completed:', err);
+        setGradcamStatus('failed');
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [predData, navigate, showToast]);
 
   // Match patient record
@@ -129,7 +166,7 @@ export default function ResultPage() {
   const displayStageTitle = `${currentStageInfo.stage} — ${currentStageInfo.label}`;
 
   const fundusImg = predData.imageUrl;
-  const heatmapImg = predData.heatmapDataUrl;
+  const heatmapImg = asyncGradcamUrl || predData.heatmapDataUrl || predData.gradcamUrl || predData.gradcam_url;
 
   const detectedFindings = predData.detectedFindings || [];
   const secondaryFindings = predData.secondaryFindings || [];
@@ -235,8 +272,15 @@ export default function ResultPage() {
                   {fundusImg && <img src={fundusImg} alt="Fundus background" className="base-underlay" />}
                   {heatmapImg ? (
                     <img src={heatmapImg} alt="Grad-CAM Attention Heatmap" className="heatmap-overlay" />
+                  ) : gradcamStatus === 'processing' ? (
+                    <div className="no-image-placeholder gradcam-loading-placeholder">
+                      <div className="gradcam-spinner"></div>
+                      <span>AI attention map is being generated...</span>
+                    </div>
                   ) : (
-                    <div className="no-image-placeholder">Map Generation Failed</div>
+                    <div className="no-image-placeholder gradcam-failed-placeholder">
+                      <span>AI attention map unavailable</span>
+                    </div>
                   )}
                 </div>
               </div>

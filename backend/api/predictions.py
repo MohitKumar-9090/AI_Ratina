@@ -65,9 +65,9 @@ async def predict_fundus(
         logger.error(f"Prediction stage [IMAGE SAVED] failed: {type(e).__name__}: {safe_err}")
         raise
 
-    # Run real model inference and Grad-CAM generation
+    # Run real model inference (predict_fast: ultra-fast, returns without waiting for Grad-CAM)
     try:
-        result = await prediction_service.predict(image_path=saved_path, patient_id=target_pid)
+        result = await prediction_service.predict_fast(image_path=saved_path, patient_id=target_pid)
     except Exception as e:
         safe_err = sanitize_credentials(str(e))
         logger.error(f"Prediction stage [MODEL INFERENCE] failed: {type(e).__name__}: {safe_err}")
@@ -91,7 +91,8 @@ async def predict_fundus(
     rfmid_findings = result.get("rfmid_findings", [])
     odir_findings = result.get("odir_findings", [])
     findings = result.get("findings", {})
-    gradcam_url = result.get("gradcam_url")
+    gradcam_url = None
+    gradcam_status = "processing"
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     # -------------------------------------------------------------------------
@@ -112,6 +113,7 @@ async def predict_fundus(
             odir_findings=odir_findings,
             findings=findings,
             gradcam_url=gradcam_url,
+            gradcam_status=gradcam_status,
             screening_date=today_str
         )
         try:
@@ -149,7 +151,11 @@ async def predict_fundus(
         odir_findings=odir_findings,
         findings=findings,
         image_url=image_url,
-        gradcam_url=gradcam_url,
+        imageUrl=image_url,
+        gradcam_url=None,
+        gradcamUrl=None,
+        gradcam_status="processing",
+        gradcamStatus="processing",
         created_at=now_iso,
         error=db_warning,
     )

@@ -143,7 +143,19 @@ def test_prediction_endpoint():
     assert "odirFindings" in body or "odir_findings" in body
     assert body.get("patient_id") == "PAT-2026-001"
     assert "/uploads/" in body.get("image_url")
-    print(f"PASS: POST /api/predict -> Real DR Stage: {body['dr']['stage']} ({body['dr']['label']}), RFMiD: {body.get('rfmidFindings', body.get('rfmid_findings'))}, ODIR: {body.get('odirFindings', body.get('odir_findings'))}")
+    assert body.get("gradcam_status") == "processing"
+    screening_id = body.get("screening_id")
+    assert screening_id is not None
+    print(f"PASS: POST /api/predict (FAST) -> Real DR Stage: {body['dr']['stage']} ({body['dr']['label']}), gradcam_status={body.get('gradcam_status')}")
+
+    # Test the decoupled on-demand Grad-CAM endpoint
+    gradcam_res = client.post(f"/api/screenings/{screening_id}/gradcam")
+    assert gradcam_res.status_code == 200, f"Grad-CAM endpoint failed: {gradcam_res.text}"
+    g_body = gradcam_res.json()
+    assert g_body.get("success") is True
+    assert g_body.get("gradcam_status") == "completed"
+    assert "/gradcam/" in g_body.get("gradcam_url")
+    print(f"PASS: POST /api/screenings/{screening_id}/gradcam -> Status: {g_body.get('gradcam_status')}, URL: {g_body.get('gradcam_url')}")
 
 
 def test_report_endpoints():

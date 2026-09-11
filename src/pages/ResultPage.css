@@ -505,6 +505,45 @@
   border: 1px solid var(--glass-border);
 }
 
+.no-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--text-muted, #8b9bb4);
+  background: rgba(10, 16, 26, 0.6);
+}
+
+.gradcam-loading-placeholder {
+  gap: 12px;
+  color: var(--accent-primary, #2ec4b6);
+  font-weight: 500;
+}
+
+.gradcam-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(46, 196, 182, 0.2);
+  border-top-color: var(--accent-primary, #2ec4b6);
+  border-radius: 50%;
+  animation: gradcam-spin 0.8s linear infinite;
+}
+
+@keyframes gradcam-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gradcam-failed-placeholder {
+  color: var(--text-muted, #8b9bb4);
+}
+
 @media (max-width: 900px) {
   .result-grid {
     grid-template-columns: 1fr;

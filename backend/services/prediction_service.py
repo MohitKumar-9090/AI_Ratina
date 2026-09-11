@@ -12,6 +12,7 @@ IMPORTANT:
   - AMD from RFMiD and ODIR heads are combined into a single "AMD / ARMD" finding.
 """
 
+import gc
 import logging
 import os
 import uuid
@@ -25,6 +26,13 @@ from torchvision import models, transforms
 from PIL import Image
 
 from core.config import settings
+
+# Constrain CPU thread creation to prevent CPU contention and memory spikes on Render
+torch.set_num_threads(1)
+try:
+    cv2.setNumThreads(1)
+except Exception:
+    pass
 
 logger = logging.getLogger("retina_ai")
 
@@ -317,28 +325,33 @@ class PredictionService:
     def _generate_gradcam(self, input_tensor: torch.Tensor, target_class: int, original_img: Image.Image, screening_id: str) -> Optional[str]:
         """
         Generates real Grad-CAM heatmap for the DR target class.
-        Saves the heatmap overlay image and returns its URL.
+        CPU-safe, memory-bounded, guaranteed cleanup of autograd resources and hooks.
         """
+        forward_handle = None
+        backward_handle = None
         try:
-            # 1. model.eval() is already set, but we need gradients
-            # Target the final convolutional layer of EfficientNet-B0
+            # 1. Target the final convolutional layer of EfficientNet-B0
             target_layer = self._model.features[-1]
             
             # Register hooks
             forward_handle = target_layer.register_forward_hook(self._hook_activations)
             backward_handle = target_layer.register_full_backward_hook(self._hook_gradients)
 
+            # Ensure model parameters DO NOT compute gradients (only activation map needs gradients)
+            for param in self._model.parameters():
+                param.requires_grad = False
+
             # Ensure input requires gradient for the backward pass to reach the features
             input_tensor.requires_grad_(True)
             
             # Forward pass
-            self._model.zero_grad()
+            self._model.zero_grad(set_to_none=True)
             dr_logits, _, _ = self._model(input_tensor)
             
             # Select predicted DR logit
             target = dr_logits[0, target_class]
             
-            # Backward pass
+            # Backward pass specifically for target DR class
             target.backward()
 
             # Generate CAM
@@ -349,7 +362,7 @@ class PredictionService:
             pooled_gradients = torch.mean(self._gradients, dim=[0, 2, 3])
             
             # Weight the channels by corresponding gradients
-            activations = self._activations[0].detach() # shape: [C, H, W]
+            activations = self._activations[0].detach().clone() # shape: [C, H, W]
             for i in range(activations.size(0)):
                 activations[i, :, :] *= pooled_gradients[i]
                 
@@ -366,20 +379,31 @@ class PredictionService:
             else:
                 heatmap = np.zeros_like(heatmap)
 
-            # Overlay CAM on original image
-            original_np = np.array(original_img)
-            # Resize heatmap to match original image size
+            # -----------------------------------------------------------------
+            # Memory-safe image overlay:
+            # Cap preview resolution to max 512x512 so float arithmetic doesn't allocate
+            # hundreds of megabytes on high-resolution fundus images (preventing container OOM).
+            # -----------------------------------------------------------------
+            orig_w, orig_h = original_img.size
+            max_dim = 512
+            if max(orig_w, orig_h) > max_dim:
+                scale = max_dim / float(max(orig_w, orig_h))
+                new_w = max(1, int(orig_w * scale))
+                new_h = max(1, int(orig_h * scale))
+                preview_img = original_img.resize((new_w, new_h), Image.Resampling.BILINEAR)
+            else:
+                preview_img = original_img
+
+            original_np = np.array(preview_img, dtype=np.uint8)
             heatmap_resized = cv2.resize(heatmap, (original_np.shape[1], original_np.shape[0]))
             
             # Convert heatmap to RGB format using Jet colormap
             heatmap_rgb = np.uint8(255 * heatmap_resized)
             heatmap_colored = cv2.applyColorMap(heatmap_rgb, cv2.COLORMAP_JET)
-            # Convert BGR to RGB
             heatmap_colored = cv2.cvtColor(heatmap_colored, cv2.COLOR_BGR2RGB)
             
-            # Superimpose the heatmap on original image
-            superimposed_img = heatmap_colored * 0.4 + original_np * 0.6
-            superimposed_img = np.clip(superimposed_img, 0, 255).astype(np.uint8)
+            # Blend cleanly with uint8 addWeighted (memory-safe, no large float64 allocations)
+            superimposed_img = cv2.addWeighted(heatmap_colored, 0.4, original_np, 0.6, 0)
 
             # Save resulting image
             gradcam_filename = f"gradcam_{screening_id}.jpg"
@@ -388,23 +412,31 @@ class PredictionService:
             result_img = Image.fromarray(superimposed_img)
             result_img.save(gradcam_filepath, quality=90)
 
-            # Clear hooks
-            forward_handle.remove()
-            backward_handle.remove()
-            self._activations = None
-            self._gradients = None
-
             return f"/gradcam/{gradcam_filename}"
 
         except Exception as e:
             logger.error(f"Grad-CAM generation failed: {e}", exc_info=True)
-            # Ensure hooks are removed in case of error
-            try:
-                forward_handle.remove()
-                backward_handle.remove()
-            except:
-                pass
             return None
+        finally:
+            # ALWAYS clean up hooks, tensors, gradients, and force garbage collection
+            if forward_handle is not None:
+                try:
+                    forward_handle.remove()
+                except Exception:
+                    pass
+            if backward_handle is not None:
+                try:
+                    backward_handle.remove()
+                except Exception:
+                    pass
+            self._activations = None
+            self._gradients = None
+            if self._model is not None:
+                try:
+                    self._model.zero_grad(set_to_none=True)
+                except Exception:
+                    pass
+            gc.collect()
 
 
     async def predict(self, image_path: str, patient_id: str = "") -> Dict[str, Any]:

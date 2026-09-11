@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Eye, ShieldCheck, Sparkles, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
@@ -20,6 +20,7 @@ export default function ProcessingPage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const [retryKey, setRetryKey] = useState(0);
+  const isRequestInProgressRef = useRef(false);
 
   const steps = [
     t('processing.step1') || 'Image received',
@@ -31,6 +32,7 @@ export default function ProcessingPage() {
   ];
 
   const handleRetry = useCallback(() => {
+    isRequestInProgressRef.current = false;
     setError(null);
     setCurrentStep(0);
     setProgress(0);
@@ -45,6 +47,11 @@ export default function ProcessingPage() {
       navigate('/screening');
       return undefined;
     }
+
+    if (isRequestInProgressRef.current) {
+      return undefined;
+    }
+    isRequestInProgressRef.current = true;
 
     const totalDuration = 3600; // smooth animation
     const stepDuration = totalDuration / steps.length;
@@ -93,12 +100,14 @@ export default function ProcessingPage() {
         showToast(msg, 'error');
       })
       .finally(() => {
+        isRequestInProgressRef.current = false;
         clearInterval(progressInterval);
         clearInterval(stepInterval);
       });
 
     return () => {
       isCancelled = true;
+      isRequestInProgressRef.current = false;
       clearInterval(progressInterval);
       clearInterval(stepInterval);
     };

@@ -2,7 +2,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from core.database import get_screenings_collection, is_mongo_connected
+from pymongo.errors import DuplicateKeyError, ConnectionFailure, ServerSelectionTimeoutError
+from core.database import get_screenings_collection, is_mongo_connected, mark_mongo_success, mark_mongo_failure
 from core.exceptions import ResourceNotFoundException, ServiceUnavailableException
 from schemas.screening import ScreeningCreate
 from services.patient_service import patient_service
@@ -63,7 +64,15 @@ class ScreeningService:
             'screening_date': data.screening_date,
             'screeningDate': data.screening_date
         })
-        self._collection().insert_one(record)
+        try:
+            self._collection().insert_one(record)
+            mark_mongo_success()
+        except DuplicateKeyError:
+            # Duplicate screening ID - treat as already persisted
+            pass
+        except (ConnectionFailure, ServerSelectionTimeoutError) as err:
+            mark_mongo_failure()
+            raise ServiceUnavailableException('Failed to persist screening due to database connection error.') from err
         return self._clean(record)
 
 

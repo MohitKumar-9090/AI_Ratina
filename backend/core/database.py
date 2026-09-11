@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 from typing import Optional, Any
 from pymongo import MongoClient
 from pymongo.database import Database
@@ -10,9 +11,28 @@ from core.config import settings
 
 logger = logging.getLogger("retina_ai")
 
+# -----------------------------------------------------------------------------
+# ROBUST DNS RESOLUTION FALLBACK FOR LINUX CONTAINERS / RENDER
+# -----------------------------------------------------------------------------
+# Containerized environments sometimes experience UDP timeouts on internal DNS
+# when resolving MongoDB Atlas SRV/TXT records. We configure dnspython with
+# resilient public DNS fallbacks (Google, Cloudflare) if needed.
+try:
+    import dns.resolver
+    _custom_resolver = dns.resolver.Resolver()
+    _custom_resolver.timeout = 3.0
+    _custom_resolver.lifetime = 5.0
+    _custom_resolver.nameservers = ["8.8.8.8", "1.1.1.1", "8.8.4.4"]
+    dns.resolver.default_resolver = _custom_resolver
+except Exception:
+    pass
+
+# Singleton MongoClient and Database instances
 _mongo_client: Optional[MongoClient] = None
 _mongo_db: Optional[Database] = None
 _is_connected: bool = False
+_last_ping_time: float = 0.0
+_PING_COOLDOWN_SECONDS: float = 30.0
 
 
 def sanitize_credentials(text: Any) -> str:
@@ -40,11 +60,34 @@ def sanitize_credentials(text: Any) -> str:
 
 
 def is_mongo_connected() -> bool:
-    """Returns True if MongoDB Atlas is currently connected and responsive."""
-    global _is_connected
-    if not _is_connected:
+    """
+    Non-blocking check if MongoDB Atlas is currently connected and responsive.
+    Does NOT execute a blocking network roundtrip on every invocation.
+    If disconnected, enforces a cooldown before retrying ping to prevent service stalls.
+    """
+    global _is_connected, _last_ping_time
+    if _is_connected:
+        return True
+
+    # When disconnected, debounce ping so incoming requests / health probes don't freeze
+    now = time.time()
+    if now - _last_ping_time > _PING_COOLDOWN_SECONDS:
+        _last_ping_time = now
         ping_database()
+
     return _is_connected
+
+
+def mark_mongo_success() -> None:
+    """Marks connection as active after any successful MongoDB operation."""
+    global _is_connected
+    _is_connected = True
+
+
+def mark_mongo_failure() -> None:
+    """Marks connection as inactive after a connection failure."""
+    global _is_connected
+    _is_connected = False
 
 
 def get_mongo_client() -> Optional[MongoClient]:
@@ -54,47 +97,53 @@ def get_mongo_client() -> Optional[MongoClient]:
     Uses certifi CA bundle for reliable TLS on all platforms.
     """
     global _mongo_client, _mongo_db
-    if _mongo_client is None:
-        if not settings.MONGODB_URI:
-            return None
+    if _mongo_client is not None:
+        return _mongo_client
+
+    if not settings.MONGODB_URI:
+        return None
+
+    try:
+        # Use certifi CA bundle to avoid platform-specific TLS issues.
+        tls_ca_file = None
         try:
-            # Use certifi CA bundle to avoid platform-specific TLS issues.
-            tls_ca_file = None
-            try:
-                import certifi
-                tls_ca_file = certifi.where()
-            except ImportError:
-                pass
+            import certifi
+            tls_ca_file = certifi.where()
+        except ImportError:
+            pass
 
-            client_kwargs = dict(
-                serverSelectionTimeoutMS=5000,
-                connectTimeoutMS=5000,
-                socketTimeoutMS=10000,
-                maxPoolSize=50,
-                minPoolSize=5,
-            )
-            if tls_ca_file:
-                client_kwargs["tlsCAFile"] = tls_ca_file
+        client_kwargs = dict(
+            serverSelectionTimeoutMS=20000,
+            connectTimeoutMS=20000,
+            socketTimeoutMS=20000,
+            maxPoolSize=10,
+            minPoolSize=1,
+            retryWrites=True,
+            retryReads=True,
+        )
+        if tls_ca_file:
+            client_kwargs["tlsCAFile"] = tls_ca_file
 
-            try:
-                _mongo_client = MongoClient(settings.MONGODB_URI, **client_kwargs)
+        try:
+            _mongo_client = MongoClient(settings.MONGODB_URI, **client_kwargs)
+            _mongo_db = _mongo_client[settings.MONGODB_DATABASE]
+        except Exception as primary_err:
+            safe_primary = sanitize_credentials(str(primary_err))
+            fallback_uri = getattr(settings, "MONGODB_FALLBACK_URI", None)
+            if fallback_uri:
+                logger.warning(f"Primary MongoDB connection failed ({safe_primary}). Attempting configured fallback connection...")
+                _mongo_client = MongoClient(fallback_uri, **client_kwargs)
                 _mongo_db = _mongo_client[settings.MONGODB_DATABASE]
-            except Exception as primary_err:
-                safe_primary = sanitize_credentials(str(primary_err))
-                fallback_uri = getattr(settings, "MONGODB_FALLBACK_URI", None)
-                if fallback_uri:
-                    logger.warning(f"Primary MongoDB connection failed ({safe_primary}). Attempting configured fallback connection...")
-                    _mongo_client = MongoClient(fallback_uri, **client_kwargs)
-                    _mongo_db = _mongo_client[settings.MONGODB_DATABASE]
-                    logger.info("Connected to MongoDB Atlas via configured fallback connection.")
-                else:
-                    logger.warning(f"MongoDB connection failed: {safe_primary}")
-                    raise primary_err
-        except Exception as e:
-            safe_err = sanitize_credentials(str(e))
-            logger.error(f"MongoClient initialization error: {type(e).__name__}: {safe_err}")
-            _mongo_client = None
-            _mongo_db = None
+                logger.info("Connected to MongoDB Atlas via configured fallback connection.")
+            else:
+                logger.warning(f"MongoDB connection failed: {safe_primary}")
+                raise primary_err
+    except Exception as e:
+        safe_err = sanitize_credentials(str(e))
+        logger.error(f"MongoClient initialization error: {type(e).__name__}: {safe_err}")
+        _mongo_client = None
+        _mongo_db = None
+
     return _mongo_client
 
 
@@ -127,8 +176,12 @@ def get_reports_collection() -> Optional[Collection]:
 
 
 def ping_database() -> bool:
-    """Sends a lightweight ping command to MongoDB Atlas."""
-    global _is_connected
+    """
+    Sends a lightweight ping command to MongoDB Atlas.
+    Reuses the existing MongoClient singleton pool.
+    """
+    global _is_connected, _last_ping_time
+    _last_ping_time = time.time()
     try:
         client = get_mongo_client()
         if client is None:
@@ -173,14 +226,16 @@ def connect_to_mongo() -> bool:
     """
     Application startup initialization hook.
     NEVER logs credentials or connection strings.
-    Logs clear, actionable diagnostics on failure.
+    Maintains a single MongoClient pool across the application lifecycle.
     """
-    global _is_connected
+    global _is_connected, _last_ping_time
+    _last_ping_time = time.time()
     try:
         client = get_mongo_client()
         if client is None:
             print("[Retina AI Backend] WARNING: MONGODB_URI is empty. Database features disabled.")
             logger.warning("MONGODB_URI is empty — database features are disabled.")
+            _is_connected = False
             return False
 
         client.admin.command("ping")
@@ -194,11 +249,9 @@ def connect_to_mongo() -> bool:
         diagnosis = _diagnose_error(e)
         logger.warning(f"MongoDB connection failed: {diagnosis}")
         print(f"[Retina AI Backend] MongoDB connection FAILED: {diagnosis}")
-
-        # Reset client so next attempt creates a fresh one
-        global _mongo_client, _mongo_db
-        _mongo_client = None
-        _mongo_db = None
+        # Note: Do NOT set _mongo_client = None here.
+        # Keeping _mongo_client alive allows PyMongo's built-in background SDAM
+        # to automatically reconnect once the network or DNS resolves.
         return False
 
 
@@ -213,5 +266,5 @@ def close_mongo_connection() -> None:
         _mongo_client = None
         _mongo_db = None
         _is_connected = False
-        logger.info("MongoDB connection closed")
+        logger.info("MongoDB connection closed cleanly")
         print("[Retina AI Backend] MongoDB connection closed cleanly.")

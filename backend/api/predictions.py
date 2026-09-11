@@ -45,27 +45,41 @@ async def predict_fundus(
     print("PREDICT START", flush=True)
     target_pid = (patient_id or patientId or "").strip()
     if not target_pid:
+        logger.error("Prediction stage [VALIDATION] failed: patient_id is required")
         raise ValidationException("patient_id is required and cannot be blank")
 
     upload_file = image or file
     if not upload_file:
+        logger.error("Prediction stage [VALIDATION] failed: Image file is required")
         raise InvalidImageException("Image file is required (field 'image' or 'file')")
 
-    saved_path, image_url = await validate_and_save_image(upload_file, patient_id=target_pid)
-    print("IMAGE SAVED", flush=True)
+    try:
+        saved_path, image_url = await validate_and_save_image(upload_file, patient_id=target_pid)
+        print("IMAGE SAVED", flush=True)
+    except Exception as e:
+        safe_err = sanitize_credentials(str(e))
+        logger.error(f"Prediction stage [IMAGE SAVED] failed: {type(e).__name__}: {safe_err}")
+        raise
 
     # Run real model inference and Grad-CAM generation
-    result = await prediction_service.predict(image_path=saved_path, patient_id=target_pid)
+    try:
+        result = await prediction_service.predict(image_path=saved_path, patient_id=target_pid)
+    except Exception as e:
+        safe_err = sanitize_credentials(str(e))
+        logger.error(f"Prediction stage [MODEL INFERENCE] failed: {type(e).__name__}: {safe_err}")
+        raise
 
     now_iso = datetime.now(timezone.utc).isoformat()
 
     if not result.get("success", False):
+        err_msg = result.get("error", "AI analysis could not be completed.")
+        logger.error(f"Prediction stage [MODEL INFERENCE] unsuccessful: {sanitize_credentials(err_msg)}")
         return PredictionResponse(
             success=False,
             patient_id=target_pid,
             image_url=image_url,
             created_at=now_iso,
-            error=result.get("error", "AI analysis could not be completed."),
+            error=err_msg,
         )
 
     screening_id = result.get("screening_id")
@@ -80,6 +94,7 @@ async def predict_fundus(
     # Best-effort screening persistence into MongoDB.
     # Persists complete finding structure: DR stage/label, RFMiD findings, ODIR findings.
     # -------------------------------------------------------------------------
+    print("MONGODB SAVE START", flush=True)
     db_warning = None
     try:
         screening_data = ScreeningCreate(
@@ -111,7 +126,7 @@ async def predict_fundus(
         print("MONGODB SAVE COMPLETE", flush=True)
     except Exception as e:
         safe_err = sanitize_credentials(str(e))
-        logger.warning(f"Screening save failed (prediction still returned): {safe_err}")
+        logger.warning(f"Prediction stage [MONGODB SAVE] failed (prediction still returned): {type(e).__name__}: {safe_err}")
         db_warning = "Prediction succeeded but record could not be saved to database."
 
     print("RESPONSE READY", flush=True)

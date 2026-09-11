@@ -1,161 +1,66 @@
 /* ========================================================
-   Retina AI — PWA Install Banner Component
+   Retina AI — Compact Modern Install App Button
    ======================================================== */
 
-.install-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 18px;
-  margin-bottom: 20px;
-  background: rgba(255, 255, 255, 0.42);
-  border: 1px solid var(--glass-border);
-  border-left: 4px solid var(--accent-primary);
-  border-radius: var(--radius-md);
-  box-shadow: var(--glass-shadow);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  z-index: 20;
-}
-
-[data-theme='dark'] .install-banner {
-  background: rgba(15, 34, 46, 0.55);
-}
-
-.install-banner-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex: 1;
-  min-width: 0;
-}
-
-.install-app-icon-wrap {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-}
-
-.install-app-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  object-fit: cover;
-  box-shadow: 0 4px 12px rgba(46, 196, 182, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-.install-badge-glow {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  background: var(--accent-primary);
-  color: white;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
+.btn-install-app {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 8px var(--accent-primary-glow);
-}
-
-.install-banner-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.install-banner-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9375rem;
-  color: var(--text-primary);
-}
-
-.install-pill {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 1px 7px;
-  border-radius: var(--radius-full);
-  background: rgba(46, 196, 182, 0.15);
-  color: var(--accent-primary);
-  border: 1px solid rgba(46, 196, 182, 0.3);
-}
-
-.install-banner-desc {
-  font-size: 0.8125rem;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.35;
-}
-
-.install-banner-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.install-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  gap: 7px;
+  height: 40px;
+  padding: 0 16px;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
   font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--accent-primary);
+  background: rgba(46, 196, 182, 0.12);
+  border: 1px solid rgba(46, 196, 182, 0.38);
+  border-radius: var(--radius-md);
+  cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 4px 14px var(--accent-primary-glow);
+  user-select: none;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(46, 196, 182, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.45);
 }
 
-.dismiss-btn {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
+.btn-install-app .install-icon {
+  color: currentColor;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
 }
 
-.dismiss-btn:hover {
-  color: var(--text-primary);
-  background: rgba(0, 0, 0, 0.05);
+.btn-install-app:hover {
+  background: linear-gradient(135deg, #38d6c7 0%, #1ea89b 100%);
+  color: #ffffff;
+  border-color: rgba(46, 196, 182, 0.8);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px var(--accent-primary-glow), inset 0 1px 1.5px rgba(255, 255, 255, 0.5);
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.btn-install-app:hover .install-icon {
+  transform: translateY(1px);
 }
 
-@media (max-width: 640px) {
-  .install-banner {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 12px 14px;
-  }
+.btn-install-app:active {
+  transform: translateY(0);
+}
 
-  .install-banner-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
+.btn-install-app:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
 
-  .install-btn {
-    flex: 1;
-    justify-content: center;
-  }
+/* Dark Theme */
+[data-theme='dark'] .btn-install-app {
+  background: rgba(46, 196, 182, 0.15);
+  border-color: rgba(46, 196, 182, 0.42);
+  color: #38d6c7;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme='dark'] .btn-install-app:hover {
+  background: linear-gradient(135deg, #38d6c7 0%, #1ea89b 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 22px var(--accent-primary-glow);
 }

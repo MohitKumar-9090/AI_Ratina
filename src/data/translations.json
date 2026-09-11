@@ -197,7 +197,7 @@
       "screening": "Screening Preferences",
       "reports": "Report Preferences",
       "privacy": "Data & Privacy",
-      "app": "Application & PWA",
+      "app": "Application",
       "accessibility": "Accessibility",
       "about": "About Retina AI",
       "resetPreferences": "Reset Preferences"
@@ -415,7 +415,7 @@
       "screening": "स्क्रीनिंग प्राथमिकताएं",
       "reports": "रिपोर्ट प्राथमिकताएं",
       "privacy": "डेटा और गोपनीयता",
-      "app": "एप्लिकेशन और PWA",
+      "app": "एप्लिकेशन",
       "accessibility": "सुलभता (Accessibility)",
       "about": "Retina AI के बारे में",
       "resetPreferences": "प्राथमिकताएं रीसेट करें"

@@ -582,13 +582,13 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* 7. APP / PWA */}
-          <section className="glass-card settings-card" id="section-app-pwa">
+          {/* 7. APPLICATION & INSTALLATION */}
+          <section className="glass-card settings-card" id="section-app-install">
             <div className="section-header-title">
               <Smartphone size={18} className="settings-section-icon" />
-              <h3>Application & PWA</h3>
+              <h3>Application Installation</h3>
             </div>
-            <p className="settings-section-desc">Progressive Web Application installation status and connectivity</p>
+            <p className="settings-section-desc">Application installation status and connection readiness</p>
 
             <div className="settings-control-group">
               <div className="settings-control-item">
@@ -599,7 +599,7 @@ export default function SettingsPage() {
                       ? 'Installed and operating in standalone clinical mode'
                       : isInstallable
                       ? 'Available to install on this device for offline capability'
-                      : 'Running in standard web browser'}
+                      : 'Running in web mode'}
                   </span>
                 </div>
                 {isInstalled ? (
@@ -611,13 +611,13 @@ export default function SettingsPage() {
                     type="button"
                     className="btn btn-primary btn-sm"
                     onClick={promptInstall}
-                    id="settings-pwa-install-btn"
+                    id="settings-install-app-btn"
                   >
                     <ArrowDownToLine size={14} />
                     <span>Install App</span>
                   </button>
                 ) : (
-                  <span className="table-status-pill pill-neutral">Browser Mode</span>
+                  <span className="table-status-pill pill-neutral">Web Mode</span>
                 )}
               </div>
 

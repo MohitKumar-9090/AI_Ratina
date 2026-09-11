@@ -98,9 +98,6 @@ export default function DashboardPage() {
 
   return (
     <div className="page" id="dashboard-page">
-      {/* PWA Install Prompt Banner */}
-      <InstallBanner />
-
       {/* Top Welcome Header & Main CTA */}
       <div className="page-header flex-between dashboard-header-row">
         <div>
@@ -112,14 +109,17 @@ export default function DashboardPage() {
           <p className="page-subtitle">{t('dashboard.subtitle')}</p>
         </div>
 
-        <button
-          className="btn btn-primary btn-lg main-cta-btn"
-          onClick={() => navigate('/screening')}
-          id="dashboard-new-screening-btn"
-        >
-          <Plus size={20} />
-          {t('dashboard.newScreening')}
-        </button>
+        <div className="dashboard-header-actions">
+          <InstallBanner />
+          <button
+            className="btn btn-primary btn-lg main-cta-btn"
+            onClick={() => navigate('/screening')}
+            id="dashboard-new-screening-btn"
+          >
+            <Plus size={20} />
+            {t('dashboard.newScreening')}
+          </button>
+        </div>
       </div>
 
       {/* KPI Statistics (4 Cards) */}

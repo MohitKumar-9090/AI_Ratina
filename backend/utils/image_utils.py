@@ -85,8 +85,7 @@ async def validate_and_save_image(
         # Re-open after verify() (Pillow closes stream after verify)
         image_stream.seek(0)
         with Image.open(image_stream) as pil_img:
-            rgb_image = pil_img.convert("RGB")
-            width, height = rgb_image.size
+            width, height = pil_img.size
             if width <= 0 or height <= 0:
                 raise InvalidImageException("Image has invalid dimensions")
 
@@ -103,6 +102,10 @@ async def validate_and_save_image(
             # Save original image bytes directly to disk without lossy re-compression
             with open(saved_filepath, "wb") as f:
                 f.write(contents)
+
+        # Release memory buffers
+        del contents
+        image_stream.close()
 
     except (InvalidImageException, FileSizeLimitExceededException):
         raise

@@ -15,7 +15,9 @@ from schemas.prediction import PredictionResponse
 from schemas.screening import ScreeningCreate
 from services.prediction_service import prediction_service
 from services.screening_service import screening_service
+from services.patient_service import patient_service
 from utils.image_utils import validate_and_save_image
+from utils.memory_utils import log_memory
 from core.exceptions import InvalidImageException, ValidationException
 from core.database import sanitize_credentials
 
@@ -42,6 +44,7 @@ async def predict_fundus(
     5. Best-effort save screening to database (MongoDB)
     6. Returns clinical results (NO confidence percentages)
     """
+    log_memory("PREDICT START MEMORY")
     print("PREDICT START", flush=True)
     target_pid = (patient_id or patientId or "").strip()
     if not target_pid:
@@ -55,6 +58,7 @@ async def predict_fundus(
 
     try:
         saved_path, image_url = await validate_and_save_image(upload_file, patient_id=target_pid)
+        log_memory("AFTER IMAGE SAVE MEMORY")
         print("IMAGE SAVED", flush=True)
     except Exception as e:
         safe_err = sanitize_credentials(str(e))
@@ -123,12 +127,14 @@ async def predict_fundus(
             except Exception:
                 pass
         await screening_service.create(screening_data)
+        log_memory("AFTER MONGODB SAVE MEMORY")
         print("MONGODB SAVE COMPLETE", flush=True)
     except Exception as e:
         safe_err = sanitize_credentials(str(e))
         logger.warning(f"Prediction stage [MONGODB SAVE] failed (prediction still returned): {type(e).__name__}: {safe_err}")
         db_warning = "Prediction succeeded but record could not be saved to database."
 
+    log_memory("RESPONSE READY MEMORY")
     print("RESPONSE READY", flush=True)
     return PredictionResponse(
         success=True,

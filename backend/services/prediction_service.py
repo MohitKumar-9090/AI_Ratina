@@ -12,6 +12,7 @@ IMPORTANT:
   - AMD from RFMiD and ODIR heads are combined into a single "AMD / ARMD" finding.
 """
 
+import asyncio
 import gc
 import logging
 import os
@@ -26,6 +27,7 @@ from torchvision import models, transforms
 from PIL import Image
 
 from core.config import settings
+from utils.memory_utils import log_memory
 
 # Constrain CPU thread creation to prevent CPU contention and memory spikes on Render
 torch.set_num_threads(1)
@@ -150,10 +152,7 @@ class PredictionService:
         self._device: str = "cuda" if torch.cuda.is_available() else "cpu"
         self._is_loaded: bool = False
         self._param_count: int = 0
-        
-        # State for Grad-CAM hooks
-        self._activations = None
-        self._gradients = None
+        self._lock = asyncio.Lock()
 
     @property
     def is_model_loaded(self) -> bool:
@@ -219,6 +218,8 @@ class PredictionService:
             load_result = self._model.load_state_dict(state_dict)
             self._model.to(self._device)
             self._model.eval()
+            for p in self._model.parameters():
+                p.requires_grad = False
             self._is_loaded = True
             self._param_count = sum(p.numel() for p in self._model.parameters())
 
@@ -246,12 +247,19 @@ class PredictionService:
     def _preprocess_image(self, image_path: str) -> Tuple[torch.Tensor, Image.Image]:
         """
         Loads and preprocesses a fundus image for inference.
-        Returns the tensor and the original PIL image (for Grad-CAM overlay).
+        Returns the 224x224 input tensor and a memory-bounded preview PIL image (for Grad-CAM overlay).
         """
-        img = Image.open(image_path).convert("RGB")
-        tensor = inference_transform(img)
-        # Add batch dimension: [C, H, W] → [1, C, H, W]
-        return tensor.unsqueeze(0).to(self._device), img
+        with Image.open(image_path) as img:
+            img_rgb = img.convert("RGB")
+            tensor = inference_transform(img_rgb)
+            orig_w, orig_h = img_rgb.size
+            max_dim = 512
+            if max(orig_w, orig_h) > max_dim:
+                scale = max_dim / float(max(orig_w, orig_h))
+                preview_img = img_rgb.resize((max(1, int(orig_w * scale)), max(1, int(orig_h * scale))), Image.Resampling.BILINEAR)
+            else:
+                preview_img = img_rgb.copy()
+        return tensor.unsqueeze(0).to(self._device), preview_img
 
     def _interpret_findings(
         self,
@@ -316,99 +324,61 @@ class PredictionService:
 
         return rfmid_findings, odir_findings, findings
 
-    def _hook_activations(self, module, input, output):
-        self._activations = output
-
-    def _hook_gradients(self, module, grad_input, grad_output):
-        self._gradients = grad_output[0]
-
-    def _generate_gradcam(self, input_tensor: torch.Tensor, target_class: int, original_img: Image.Image, screening_id: str) -> Optional[str]:
+    def _generate_gradcam(
+        self,
+        feature_map: torch.Tensor,
+        target_class: int,
+        preview_img: Image.Image,
+        screening_id: str
+    ) -> Optional[str]:
         """
         Generates real Grad-CAM heatmap for the DR target class.
-        CPU-safe, memory-bounded, guaranteed cleanup of autograd resources and hooks.
+        Calculates exact gradients directly from the final feature map through avgpool and dr_head,
+        completely avoiding autograd graph construction for the 16-stage backbone.
         """
-        forward_handle = None
-        backward_handle = None
+        feat_var = None
+        p_cam = None
+        out_cam = None
+        target = None
         try:
-            # 1. Target the final convolutional layer of EfficientNet-B0
-            target_layer = self._model.features[-1]
-            
-            # Register hooks
-            forward_handle = target_layer.register_forward_hook(self._hook_activations)
-            backward_handle = target_layer.register_full_backward_hook(self._hook_gradients)
-
-            # Ensure model parameters DO NOT compute gradients (only activation map needs gradients)
-            for param in self._model.parameters():
-                param.requires_grad = False
-
-            # Ensure input requires gradient for the backward pass to reach the features
-            input_tensor.requires_grad_(True)
-            
-            # Forward pass
-            self._model.zero_grad(set_to_none=True)
-            dr_logits, _, _ = self._model(input_tensor)
-            
-            # Select predicted DR logit
-            target = dr_logits[0, target_class]
-            
-            # Backward pass specifically for target DR class
+            # Direct feature autograd: clone and track gradients on feature map
+            feat_var = feature_map.clone().requires_grad_(True)
+            p_cam = self._model.avgpool(feat_var).flatten(1)
+            out_cam = self._model.dr_head(p_cam)
+            target = out_cam[0, target_class]
             target.backward()
 
-            # Generate CAM
-            if self._gradients is None or self._activations is None:
-                raise ValueError("Hooks failed to capture gradients/activations")
+            grads = feat_var.grad
+            acts = feat_var.detach()
+            pooled_grads = torch.mean(grads, dim=[0, 2, 3])
+            for i in range(acts.size(1)):
+                acts[0, i, :, :] *= pooled_grads[i]
 
-            # Global average pooling on the gradients
-            pooled_gradients = torch.mean(self._gradients, dim=[0, 2, 3])
-            
-            # Weight the channels by corresponding gradients
-            activations = self._activations[0].detach().clone() # shape: [C, H, W]
-            for i in range(activations.size(0)):
-                activations[i, :, :] *= pooled_gradients[i]
-                
             # Average the channels of the activations to create a heatmap
-            heatmap = torch.mean(activations, dim=0).cpu().numpy()
-            
-            # ReLU on the heatmap
+            heatmap = torch.mean(acts[0], dim=0).cpu().numpy()
             heatmap = np.maximum(heatmap, 0)
-            
-            # Normalize the heatmap to [0, 1]
             max_val = np.max(heatmap)
             if max_val > 1e-8:
                 heatmap = heatmap / max_val
             else:
                 heatmap = np.zeros_like(heatmap)
 
-            # -----------------------------------------------------------------
-            # Memory-safe image overlay:
-            # Cap preview resolution to max 512x512 so float arithmetic doesn't allocate
-            # hundreds of megabytes on high-resolution fundus images (preventing container OOM).
-            # -----------------------------------------------------------------
-            orig_w, orig_h = original_img.size
-            max_dim = 512
-            if max(orig_w, orig_h) > max_dim:
-                scale = max_dim / float(max(orig_w, orig_h))
-                new_w = max(1, int(orig_w * scale))
-                new_h = max(1, int(orig_h * scale))
-                preview_img = original_img.resize((new_w, new_h), Image.Resampling.BILINEAR)
-            else:
-                preview_img = original_img
-
+            # Memory-safe image overlay using pre-bounded preview
             original_np = np.array(preview_img, dtype=np.uint8)
             heatmap_resized = cv2.resize(heatmap, (original_np.shape[1], original_np.shape[0]))
-            
+
             # Convert heatmap to RGB format using Jet colormap
             heatmap_rgb = np.uint8(255 * heatmap_resized)
             heatmap_colored = cv2.applyColorMap(heatmap_rgb, cv2.COLORMAP_JET)
             heatmap_colored = cv2.cvtColor(heatmap_colored, cv2.COLOR_BGR2RGB)
-            
+
             # Blend cleanly with uint8 addWeighted (memory-safe, no large float64 allocations)
             superimposed_img = cv2.addWeighted(heatmap_colored, 0.4, original_np, 0.6, 0)
 
             # Save resulting image
             gradcam_filename = f"gradcam_{screening_id}.jpg"
             gradcam_filepath = os.path.join(settings.GRADCAM_DIR, gradcam_filename)
-            
+
             result_img = Image.fromarray(superimposed_img)
             result_img.save(gradcam_filepath, quality=90)
 
@@ -418,30 +388,18 @@ class PredictionService:
             logger.error(f"Grad-CAM generation failed: {e}", exc_info=True)
             return None
         finally:
-            # ALWAYS clean up hooks, tensors, gradients, and force garbage collection
-            if forward_handle is not None:
-                try:
-                    forward_handle.remove()
-                except Exception:
-                    pass
-            if backward_handle is not None:
-                try:
-                    backward_handle.remove()
-                except Exception:
-                    pass
-            self._activations = None
-            self._gradients = None
             if self._model is not None:
                 try:
                     self._model.zero_grad(set_to_none=True)
                 except Exception:
                     pass
+            del feat_var, p_cam, out_cam, target
             gc.collect()
-
 
     async def predict(self, image_path: str, patient_id: str = "") -> Dict[str, Any]:
         """
         Runs full inference on a fundus image and returns clinical results and real Grad-CAM.
+        Serialized through asyncio.Lock to prevent concurrent memory spikes on Render.
         """
         if not self._is_loaded or self._model is None:
             return {
@@ -450,108 +408,108 @@ class PredictionService:
                 "patient_id": patient_id,
             }
 
-        try:
-            # Preprocess image
-            input_tensor, original_img = self._preprocess_image(image_path)
-            
-            # Generate a unique screening ID for this prediction to save Grad-CAM
-            screening_id = f"SCR-{uuid.uuid4().hex[:8].upper()}"
+        async with self._lock:
+            try:
+                # Preprocess image
+                input_tensor, preview_img = self._preprocess_image(image_path)
+                log_memory("AFTER IMAGE LOAD MEMORY")
 
-            # --- NORMAL INFERENCE ---
-            with torch.no_grad():
-                dr_logits, rfmid_logits, odir_logits = self._model(input_tensor)
+                # Generate a unique screening ID for this prediction to save Grad-CAM
+                screening_id = f"SCR-{uuid.uuid4().hex[:8].upper()}"
 
-            # DR classification (mutually-exclusive argmax)
-            dr_stage = torch.argmax(dr_logits, dim=1).item()
-            dr_label = DR_LABELS.get(dr_stage, "Unknown")
-            dr_probs = torch.softmax(dr_logits, dim=1).squeeze(0).tolist()
-            dr_logits_list = dr_logits.squeeze(0).tolist()
+                # --- NORMAL INFERENCE ---
+                with torch.no_grad():
+                    features = self._model.features(input_tensor)
+                    pooled = self._model.avgpool(features)
+                    flat = pooled.flatten(1)
+                    dr_logits = self._model.dr_head(flat)
+                    rfmid_logits = self._model.rfmid_head(flat)
+                    odir_logits = self._model.odir_head(flat)
 
-            # Secondary findings (multilabel sigmoid with 0.5 threshold)
-            rfmid_findings, odir_findings, findings = self._interpret_findings(rfmid_logits, odir_logits)
-            print("MODEL INFERENCE COMPLETE", flush=True)
+                    # DR classification (mutually-exclusive argmax)
+                    dr_stage = torch.argmax(dr_logits, dim=1).item()
+                    dr_label = DR_LABELS.get(dr_stage, "Unknown")
+                    dr_probs = torch.softmax(dr_logits, dim=1).squeeze(0).tolist()
+                    dr_logits_list = dr_logits.squeeze(0).tolist()
 
-            # --- INTERNAL DIAGNOSTIC LOG (DEVELOPMENT-ONLY) ---
-            rfmid_preds = torch.sigmoid(rfmid_logits).squeeze(0)
-            odir_preds = torch.sigmoid(odir_logits).squeeze(0)
-            diagnostic_msg = (
-                f"\n=======================================================\n"
-                f"--- [DIABETIC RETINOPATHY DIAGNOSTIC LOG] ---\n"
-                f"Image: {os.path.basename(image_path)}\n"
-                f"DR logits: {[round(x, 4) for x in dr_logits_list]}\n"
-                f"DR probabilities:\n"
-                f"  0 No DR: {dr_probs[0]:.4f}\n"
-                f"  1 Mild DR: {dr_probs[1]:.4f}\n"
-                f"  2 Moderate DR: {dr_probs[2]:.4f}\n"
-                f"  3 Severe DR: {dr_probs[3]:.4f}\n"
-                f"  4 Proliferative DR: {dr_probs[4]:.4f}\n"
-                f"Selected DR class: {dr_stage}\n"
-                f"Selected DR label: {dr_label}\n"
-                f"\nRFMiD probabilities:\n"
-                f"  ARMD/AMD = {rfmid_preds[0].item():.4f}\n"
-                f"  BRVO = {rfmid_preds[1].item():.4f}\n"
-                f"  ODC = {rfmid_preds[2].item():.4f}\n\n"
-                f"ODIR probabilities:\n"
-                f"  Normal = {odir_preds[0].item():.4f}\n"
-                f"  Diabetes = {odir_preds[1].item():.4f}\n"
-                f"  Glaucoma = {odir_preds[2].item():.4f}\n"
-                f"  Cataract = {odir_preds[3].item():.4f}\n"
-                f"  AMD = {odir_preds[4].item():.4f}\n"
-                f"  Hypertension = {odir_preds[5].item():.4f}\n"
-                f"  Myopia = {odir_preds[6].item():.4f}\n"
-                f"  Other = {odir_preds[7].item():.4f}\n\n"
-                f"Selected RFMiD findings: {rfmid_findings}\n"
-                f"Selected ODIR findings: {odir_findings}\n"
-                f"======================================================="
-            )
-            logger.info(diagnostic_msg)
-            print(diagnostic_msg, flush=True)
+                    # Secondary findings (multilabel sigmoid with 0.5 threshold)
+                    rfmid_findings, odir_findings, findings = self._interpret_findings(rfmid_logits, odir_logits)
 
-            # Build image URL from saved path
-            filename = os.path.basename(image_path)
-            image_url = f"/uploads/{filename}"
+                    # Clone feature map for Grad-CAM
+                    feat_for_cam = features.clone()
 
-            # --- GRAD-CAM GENERATION ---
-            # Run a separate forward/backward pass specifically for Grad-CAM on predicted DR class
-            gradcam_url = self._generate_gradcam(
-                input_tensor=input_tensor.clone().detach(), 
-                target_class=dr_stage, 
-                original_img=original_img, 
-                screening_id=screening_id
-            )
-            print("GRADCAM COMPLETE", flush=True)
+                # Free forward inference tensors
+                del input_tensor, features, pooled, flat, dr_logits, rfmid_logits, odir_logits
+                log_memory("AFTER MODEL INFERENCE MEMORY")
+                print("MODEL INFERENCE COMPLETE", flush=True)
 
-            # Grad-CAM is supplementary — its failure must NOT prevent
-            # returning a successful prediction result to the user.
-            if gradcam_url is None:
-                logger.warning("Grad-CAM generation failed; prediction result is still valid.")
+                # --- INTERNAL DIAGNOSTIC LOG (DEVELOPMENT-ONLY) ---
+                diagnostic_msg = (
+                    f"\n=======================================================\n"
+                    f"--- [DIABETIC RETINOPATHY DIAGNOSTIC LOG] ---\n"
+                    f"Image: {os.path.basename(image_path)}\n"
+                    f"DR logits: {[round(x, 4) for x in dr_logits_list]}\n"
+                    f"DR probabilities:\n"
+                    f"  0 No DR: {dr_probs[0]:.4f}\n"
+                    f"  1 Mild DR: {dr_probs[1]:.4f}\n"
+                    f"  2 Moderate DR: {dr_probs[2]:.4f}\n"
+                    f"  3 Severe DR: {dr_probs[3]:.4f}\n"
+                    f"  4 Proliferative DR: {dr_probs[4]:.4f}\n"
+                    f"Selected DR class: {dr_stage}\n"
+                    f"Selected DR label: {dr_label}\n"
+                    f"Selected RFMiD findings: {rfmid_findings}\n"
+                    f"Selected ODIR findings: {odir_findings}\n"
+                    f"======================================================="
+                )
+                logger.info(diagnostic_msg)
+                print(diagnostic_msg, flush=True)
 
-            return {
-                "success": True,
-                "screening_id": screening_id,
-                "patient_id": patient_id,
-                "drStage": dr_stage,
-                "drLabel": dr_label,
-                "dr_stage": dr_stage,
-                "dr_label": dr_label,
-                "dr": {
-                    "stage": dr_stage,
-                    "label": dr_label,
-                    "result": dr_label,
-                },
-                "rfmid_findings": rfmid_findings,
-                "odir_findings": odir_findings,
-                "findings": findings,
-                "image_url": image_url,
-                "gradcam_url": gradcam_url,
-            }
+                # Build image URL from saved path
+                filename = os.path.basename(image_path)
+                image_url = f"/uploads/{filename}"
 
-        except Exception as e:
-            logger.error(f"Inference failed: {e}", exc_info=True)
-            return {
-                "success": False,
-                "error": f"Inference error: {str(e)}",
-            }
+                # --- GRAD-CAM GENERATION ---
+                gradcam_url = self._generate_gradcam(
+                    feature_map=feat_for_cam,
+                    target_class=dr_stage,
+                    preview_img=preview_img,
+                    screening_id=screening_id
+                )
+                del feat_for_cam
+                log_memory("AFTER GRADCAM MEMORY")
+                print("GRADCAM COMPLETE", flush=True)
+
+                # Grad-CAM is supplementary — its failure must NOT prevent
+                # returning a successful prediction result to the user.
+                if gradcam_url is None:
+                    logger.warning("Grad-CAM generation failed; prediction result is still valid.")
+
+                return {
+                    "success": True,
+                    "screening_id": screening_id,
+                    "patient_id": patient_id,
+                    "drStage": dr_stage,
+                    "drLabel": dr_label,
+                    "dr_stage": dr_stage,
+                    "dr_label": dr_label,
+                    "dr": {
+                        "stage": dr_stage,
+                        "label": dr_label,
+                        "result": dr_label,
+                    },
+                    "rfmid_findings": rfmid_findings,
+                    "odir_findings": odir_findings,
+                    "findings": findings,
+                    "image_url": image_url,
+                    "gradcam_url": gradcam_url,
+                }
+
+            except Exception as e:
+                logger.error(f"Inference failed: {e}", exc_info=True)
+                return {
+                    "success": False,
+                    "error": f"Inference error: {str(e)}",
+                }
 
     def diagnose_image(self, image_path: str) -> Dict[str, Any]:
         """

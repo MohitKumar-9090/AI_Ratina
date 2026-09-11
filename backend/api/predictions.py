@@ -17,6 +17,7 @@ from services.prediction_service import prediction_service
 from services.screening_service import screening_service
 from utils.image_utils import validate_and_save_image
 from core.exceptions import InvalidImageException, ValidationException
+from core.database import sanitize_credentials
 
 logger = logging.getLogger("retina_ai")
 
@@ -109,8 +110,9 @@ async def predict_fundus(
         await screening_service.create(screening_data)
         print("MONGODB SAVE COMPLETE", flush=True)
     except Exception as e:
-        logger.warning(f"Screening save failed (prediction still returned): {e}")
-        db_warning = f"Prediction succeeded but could not be saved: {e}"
+        safe_err = sanitize_credentials(str(e))
+        logger.warning(f"Screening save failed (prediction still returned): {safe_err}")
+        db_warning = "Prediction succeeded but record could not be saved to database."
 
     print("RESPONSE READY", flush=True)
     return PredictionResponse(

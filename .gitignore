@@ -12,10 +12,29 @@ dist
 dist-ssr
 *.local
 
-# Secrets and generated clinical assets
+# Secrets and environment configurations
 .env
+.env.*
 .env.local
+.env.*.local
+!.env.example
+
 backend/.env
+backend/.env.*
+backend/.env.local
+backend/.env.*.local
+!backend/.env.example
+
+# Backup and temporary directories
+_backup_*
+backup/
+backups/
+*.backup
+old/
+temp/
+tmp/
+
+# Model checkpoints & generated clinical assets
 *.pth
 backend/uploads/*
 !backend/uploads/.gitkeep

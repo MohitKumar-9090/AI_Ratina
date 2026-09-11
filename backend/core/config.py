@@ -1,5 +1,5 @@
 import os
-from typing import List, Any
+from typing import List, Any, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     # MongoDB Atlas configuration
     MONGODB_URI: str = ""
+    MONGODB_FALLBACK_URI: Optional[str] = None
     MONGODB_DATABASE: str = "retina_ai"
 
     # Real AI model path anchored to backend root

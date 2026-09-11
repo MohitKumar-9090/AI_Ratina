@@ -1,5 +1,6 @@
 import logging
-from typing import Optional
+import re
+from typing import Optional, Any
 from pymongo import MongoClient
 from pymongo.database import Database
 from pymongo.collection import Collection
@@ -12,6 +13,30 @@ logger = logging.getLogger("retina_ai")
 _mongo_client: Optional[MongoClient] = None
 _mongo_db: Optional[Database] = None
 _is_connected: bool = False
+
+
+def sanitize_credentials(text: Any) -> str:
+    """
+    Masks MongoDB credentials and sensitive tokens from strings/exceptions.
+    Ensures that usernames, passwords, and tokens are NEVER exposed in logs or API responses.
+    """
+    if not isinstance(text, str):
+        text = str(text) if text is not None else ""
+    # Mask mongodb+srv:// and mongodb:// credentials: user:pass@ -> ***:***@
+    sanitized = re.sub(
+        r'(mongodb(?:\+srv)?://)([^:@\s\t\n]+):([^@\s\t\n]+)@',
+        r'\1***:***@',
+        text,
+        flags=re.IGNORECASE
+    )
+    # Mask any Bearer tokens
+    sanitized = re.sub(
+        r'(Bearer\s+)[A-Za-z0-9_\-\.=]+',
+        r'\1***',
+        sanitized,
+        flags=re.IGNORECASE
+    )
+    return sanitized
 
 
 def is_mongo_connected() -> bool:
@@ -55,16 +80,19 @@ def get_mongo_client() -> Optional[MongoClient]:
                 _mongo_client = MongoClient(settings.MONGODB_URI, **client_kwargs)
                 _mongo_db = _mongo_client[settings.MONGODB_DATABASE]
             except Exception as primary_err:
-                if "cluster0.tvjf08u.mongodb.net" in settings.MONGODB_URI:
-                    logger.warning(f"Primary MongoDB SRV connection failed ({primary_err}). Attempting direct replica set connection...")
-                    fallback_uri = "mongodb://mbhartdwaj6_db_user:EcfHKv3bBq23GcTi@ac-aqyd3gp-shard-00-00.tvjf08u.mongodb.net:27017,ac-aqyd3gp-shard-00-01.tvjf08u.mongodb.net:27017,ac-aqyd3gp-shard-00-02.tvjf08u.mongodb.net:27017/retina_ai?ssl=true&authSource=admin&replicaSet=atlas-tkpljl-shard-0"
+                safe_primary = sanitize_credentials(str(primary_err))
+                fallback_uri = getattr(settings, "MONGODB_FALLBACK_URI", None)
+                if fallback_uri:
+                    logger.warning(f"Primary MongoDB connection failed ({safe_primary}). Attempting configured fallback connection...")
                     _mongo_client = MongoClient(fallback_uri, **client_kwargs)
                     _mongo_db = _mongo_client[settings.MONGODB_DATABASE]
-                    logger.info("Connected to MongoDB Atlas via direct shard connection.")
+                    logger.info("Connected to MongoDB Atlas via configured fallback connection.")
                 else:
+                    logger.warning(f"MongoDB connection failed: {safe_primary}")
                     raise primary_err
         except Exception as e:
-            logger.error(f"MongoClient initialization error: {type(e).__name__}: {e}")
+            safe_err = sanitize_credentials(str(e))
+            logger.error(f"MongoClient initialization error: {type(e).__name__}: {safe_err}")
             _mongo_client = None
             _mongo_db = None
     return _mongo_client
@@ -119,7 +147,7 @@ def _diagnose_error(exc: Exception) -> str:
     Produces a safe, actionable diagnostic message from a MongoDB exception.
     NEVER exposes credentials, URIs, or passwords.
     """
-    msg = str(exc)
+    msg = sanitize_credentials(str(exc))
     if "TLSV1_ALERT_INTERNAL_ERROR" in msg or "SSL handshake failed" in msg:
         return (
             "SSL/TLS handshake rejected by Atlas. "

@@ -1,7 +1,9 @@
 # Environment variables
 .env
+.env.*
 .env.local
 .env.*.local
+!.env.example
 
 # Python bytecode & cache
 __pycache__/

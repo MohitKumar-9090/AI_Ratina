@@ -116,7 +116,9 @@ def setup_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
-        logger.error(f"Unhandled server error on {request.url.path}: {exc}", exc_info=True)
+        from core.database import sanitize_credentials
+        safe_msg = sanitize_credentials(str(exc))
+        logger.error(f"Unhandled server error on {request.url.path}: {safe_msg}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={

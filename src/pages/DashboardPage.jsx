@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import SeverityBadge from '../components/SeverityBadge';
 import PatientFormModal from '../components/PatientFormModal';
+import InstallBanner from '../components/InstallBanner';
 import {
   Users,
   ScanEye,
@@ -127,6 +128,9 @@ export default function DashboardPage() {
 
   return (
     <div className="page" id="dashboard-page">
+      {/* PWA Install Prompt Banner */}
+      <InstallBanner />
+
       {/* Top Welcome Header & Main CTA */}
       <div className="page-header flex-between dashboard-header-row">
         <div>

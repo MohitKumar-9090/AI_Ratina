@@ -4,7 +4,6 @@ import { useApp } from '../context/AppContext';
 import PatientFormModal from '../components/PatientFormModal';
 import {
   ArrowLeft,
-  ArrowRight,
   User,
   UserPlus,
   UserCheck,
@@ -42,6 +41,7 @@ export default function ImageUploadPage() {
     setSelectedPatient,
     uploadedImage,
     setUploadedImage,
+    isOffline,
     showToast,
     t
   } = useApp();
@@ -157,6 +157,10 @@ export default function ImageUploadPage() {
   };
 
   const handleStartAnalysis = () => {
+    if (isOffline || !navigator.onLine) {
+      showToast('An internet connection is required to perform AI screening.', 'error');
+      return;
+    }
     if (!selectedPatient) {
       showToast('Please select or register a patient before analysis.', 'error');
       return;
@@ -533,7 +537,7 @@ export default function ImageUploadPage() {
             <button
               type="button"
               className="btn btn-primary btn-lg analyze-cta-btn"
-              disabled={!isFormReady || isAnalyzing}
+              disabled={!isFormReady || isAnalyzing || isOffline}
               onClick={handleStartAnalysis}
               id="analyze-retina-cta-btn"
             >
@@ -548,7 +552,12 @@ export default function ImageUploadPage() {
                 </>
               )}
             </button>
-            {!isFormReady && (
+            {isOffline ? (
+              <p className="action-disabled-hint" style={{ color: 'var(--accent-alert)' }}>
+                <AlertCircle size={14} />
+                <span>An internet connection is required to perform AI screening.</span>
+              </p>
+            ) : !isFormReady && (
               <p className="action-disabled-hint">
                 <AlertCircle size={14} />
                 <span>

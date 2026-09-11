@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
   X,
-  Download,
+  ArrowDownToLine,
   Printer,
   Save,
   FileText,
@@ -18,21 +18,21 @@ export default function ReportModal({
   screeningData,
   patientData,
   fundusImage,
-  gradcamImage
+  gradcamImage,
+  autoDownload = false
 }) {
   const { saveReport, showToast } = useApp();
   const reportContentRef = useRef(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [reportId] = useState(() => screeningData?.reportId || 'Pending');
-
-  if (!isOpen || !screeningData) return null;
+  const autoDownloadedRef = useRef(false);
 
   const patient = patientData || { fullName: 'Not available', patientId: 'Not available' };
 
-  const dateStr = screeningData.screeningDate || new Date().toISOString().split('T')[0];
-  const clinicName = localStorage.getItem('retina_clinic_name') || 'AI Retina Tele-Ophthalmology Centre';
-  const doctorName = localStorage.getItem('retina_doctor_name') || 'Dr. S. Mehta, MS (Ophthalmology)';
+  const dateStr = screeningData?.screeningDate || new Date().toISOString().split('T')[0];
+  const clinicName = typeof localStorage !== 'undefined' ? localStorage.getItem('retina_clinic_name') || 'AI Retina Tele-Ophthalmology Centre' : 'AI Retina Tele-Ophthalmology Centre';
+  const doctorName = typeof localStorage !== 'undefined' ? localStorage.getItem('retina_doctor_name') || 'Dr. S. Mehta, MS (Ophthalmology)' : 'Dr. S. Mehta, MS (Ophthalmology)';
 
   const handlePrint = () => {
     window.print();
@@ -68,6 +68,16 @@ export default function ReportModal({
     }
   };
 
+  useEffect(() => {
+    if (isOpen && autoDownload && !autoDownloadedRef.current) {
+      autoDownloadedRef.current = true;
+      const timer = setTimeout(() => {
+        handleDownloadPdf();
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, autoDownload]);
+
   const parseStageVal = (val) => {
     if (val === undefined || val === null) return null;
     if (typeof val === 'number' && !isNaN(val)) return Math.max(0, Math.min(4, Math.floor(val)));
@@ -97,7 +107,9 @@ export default function ReportModal({
     setIsSaved(true);
   };
 
-  const detectedFindings = screeningData.detectedFindings || [];
+  const detectedFindings = screeningData?.detectedFindings || [];
+
+  if (!isOpen || !screeningData) return null;
 
   return (
     <div className="modal-backdrop animate-fade-in" onClick={onClose} role="dialog" aria-modal="true">
@@ -137,8 +149,10 @@ export default function ReportModal({
               onClick={handleDownloadPdf}
               disabled={isGeneratingPdf}
               id="download-pdf-btn"
+              aria-label="Download Clinical Report PDF"
+              title="Download Clinical Report as PDF"
             >
-              <Download size={15} />
+              <ArrowDownToLine size={15} />
               {isGeneratingPdf ? 'Generating...' : 'Download PDF'}
             </button>
 

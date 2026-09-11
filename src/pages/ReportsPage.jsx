@@ -8,7 +8,7 @@ import {
   Search,
   Filter,
   Eye,
-  Download,
+  ArrowDownToLine,
   Printer,
   Calendar,
   User
@@ -43,7 +43,17 @@ export default function ReportsPage() {
     const matchedPatient = patients.find(p => p.patientId === report.patientId);
     setSelectedReportForModal({
       report,
-      patient: matchedPatient
+      patient: matchedPatient,
+      autoDownload: false
+    });
+  };
+
+  const handleDownloadModal = (report) => {
+    const matchedPatient = patients.find(p => p.patientId === report.patientId);
+    setSelectedReportForModal({
+      report,
+      patient: matchedPatient,
+      autoDownload: true
     });
   };
 
@@ -151,15 +161,17 @@ export default function ReportsPage() {
                         </button>
                         <button
                           className="btn btn-ghost btn-sm action-btn"
-                          onClick={() => handleOpenModal(report)}
-                          title="Download PDF"
+                          onClick={() => handleDownloadModal(report)}
+                          title="Download Clinical Report PDF"
+                          aria-label="Download Clinical Report PDF"
                         >
-                          <Download size={14} />
+                          <ArrowDownToLine size={14} />
                         </button>
                         <button
                           className="btn btn-ghost btn-sm action-btn"
                           onClick={() => handleOpenModal(report)}
                           title="Print Report"
+                          aria-label="Print Clinical Report"
                         >
                           <Printer size={14} />
                         </button>
@@ -182,6 +194,7 @@ export default function ReportsPage() {
           patientData={selectedReportForModal.patient}
           fundusImage={selectedReportForModal.report.imageUrl ? `${API_BASE_URL}${selectedReportForModal.report.imageUrl}` : null}
           gradcamImage={selectedReportForModal.report.gradcamUrl ? `${API_BASE_URL}${selectedReportForModal.report.gradcamUrl}` : null}
+          autoDownload={selectedReportForModal.autoDownload || false}
         />
       )}
     </div>

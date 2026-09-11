@@ -205,6 +205,9 @@
     "notice": {
       "medical": "AI-generated screening results are intended to support clinical review and should be interpreted by a qualified eye-care professional."
     },
+    "offline": {
+      "status": "You are offline. An internet connection is required to perform AI screening."
+    },
     "common": {
       "back": "Back",
       "continue": "Continue",
@@ -419,6 +422,9 @@
     },
     "notice": {
       "medical": "AI-जनरेटेड स्क्रीनिंग परिणाम क्लिनिकल समीक्षा में सहायता के लिए हैं और योग्य नेत्र विशेषज्ञ द्वारा व्याख्या किए जाने चाहिए।"
+    },
+    "offline": {
+      "status": "आप ऑफ़लाइन हैं। AI स्क्रीनिंग करने के लिए इंटरनेट कनेक्शन आवश्यक है।"
     },
     "common": {
       "back": "वापस",

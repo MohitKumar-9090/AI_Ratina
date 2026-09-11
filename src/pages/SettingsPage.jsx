@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import {
   Globe,
   Moon,
@@ -15,11 +16,15 @@ import {
   Sparkles,
   Building2,
   UserCheck,
-  Save
+  Save,
+  Smartphone,
+  CheckCircle2,
+  ArrowDownToLine
 } from 'lucide-react';
 import './SettingsPage.css';
 
 export default function SettingsPage() {
+  const { isInstallable, isInstalled, promptInstall } = usePWAInstall();
   const {
     language,
     toggleLanguage,
@@ -306,6 +311,42 @@ export default function SettingsPage() {
               <h3>{t('settings.privacyTitle')}</h3>
             </div>
             <p className="settings-text-block">{t('settings.privacyDesc')}</p>
+          </div>
+        </div>
+
+        {/* Progressive Web App (PWA) Card */}
+        <div className="glass-card settings-card" id="pwa-settings-card">
+          <div className="settings-row">
+            <div className="settings-row-info">
+              <Smartphone size={20} className="settings-icon" />
+              <div>
+                <span className="settings-label">Progressive Web Application (PWA)</span>
+                <span className="settings-desc">
+                  {isInstalled
+                    ? 'Retina AI is installed and running in standalone clinical mode.'
+                    : 'Install Retina AI on your device for fast access and offline application shell.'}
+                </span>
+              </div>
+            </div>
+
+            {isInstalled ? (
+              <span className="table-status-pill pill-safe" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <CheckCircle2 size={13} /> Installed
+              </span>
+            ) : isInstallable ? (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={promptInstall}
+                id="settings-install-pwa-btn"
+                aria-label="Install Retina AI PWA"
+                title="Install Retina AI"
+              >
+                <ArrowDownToLine size={15} />
+                Install App
+              </button>
+            ) : (
+              <span className="table-status-pill pill-neutral">Browser Mode</span>
+            )}
           </div>
         </div>
 

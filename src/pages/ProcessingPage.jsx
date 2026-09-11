@@ -48,6 +48,14 @@ export default function ProcessingPage() {
       return undefined;
     }
 
+    if (!navigator.onLine) {
+      setError({
+        title: 'Connection Offline',
+        message: 'An internet connection is required to perform AI screening. Please connect to the internet and try again.'
+      });
+      return undefined;
+    }
+
     if (isRequestInProgressRef.current) {
       return undefined;
     }

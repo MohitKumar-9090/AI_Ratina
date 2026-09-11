@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import SeverityBadge from '../components/SeverityBadge';
 import ReportModal from '../components/ReportModal';
 import {
-  Download,
+  ArrowDownToLine,
   Save,
   ArrowLeft,
   FileText,
@@ -32,6 +32,7 @@ export default function ResultPage() {
   } = useApp();
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [autoDownloadReport, setAutoDownloadReport] = useState(false);
   const [isLargeImageModalOpen, setIsLargeImageModalOpen] = useState(false);
   const [asyncGradcamUrl, setAsyncGradcamUrl] = useState(null);
   const [gradcamStatus, setGradcamStatus] = useState('processing');
@@ -187,6 +188,16 @@ export default function ResultPage() {
     showToast('Grad-CAM image downloaded');
   };
 
+  const handleDirectDownloadReport = () => {
+    setAutoDownloadReport(true);
+    setIsReportModalOpen(true);
+  };
+
+  const handleOpenReportModal = () => {
+    setAutoDownloadReport(false);
+    setIsReportModalOpen(true);
+  };
+
   const handleSaveResult = () => showToast(t('result.saved'));
 
   return (
@@ -207,12 +218,24 @@ export default function ResultPage() {
 
         <div className="result-top-actions">
           <button
-            className="btn btn-primary btn-lg generate-report-btn"
-            onClick={() => setIsReportModalOpen(true)}
-            id="generate-report-cta-btn"
+            className="btn btn-secondary btn-lg download-report-top-btn"
+            onClick={handleDirectDownloadReport}
+            id="top-download-report-btn"
+            aria-label="Download Clinical Report PDF"
+            title="Download Clinical Report as PDF"
           >
-            <FileText size={20} />
-            Generate Report
+            <ArrowDownToLine size={18} />
+            Download Report
+          </button>
+          <button
+            className="btn btn-primary btn-lg generate-report-btn"
+            onClick={handleOpenReportModal}
+            id="generate-report-cta-btn"
+            aria-label="View Clinical Report"
+            title="View Clinical Report"
+          >
+            <FileText size={18} />
+            View Report
           </button>
         </div>
       </div>
@@ -302,8 +325,10 @@ export default function ResultPage() {
                 className="btn btn-ghost btn-sm"
                 onClick={handleDownloadHeatmap}
                 disabled={!heatmapImg}
+                aria-label="Download Attention Map Image"
+                title="Download Attention Heatmap"
               >
-                <Download size={14} />
+                <ArrowDownToLine size={14} />
                 {t('result.downloadImage')}
               </button>
             </div>
@@ -398,17 +423,33 @@ export default function ResultPage() {
           <div className="result-actions-bar">
             <button
               className="btn btn-primary btn-lg"
-              onClick={() => setIsReportModalOpen(true)}
+              onClick={handleDirectDownloadReport}
               style={{ flex: 2 }}
+              id="download-report-btn"
+              aria-label="Download Clinical Report PDF"
+              title="Download Clinical Report as PDF"
             >
-              <FileText size={20} />
-              Generate Clinical Report
+              <ArrowDownToLine size={20} />
+              Download Report
+            </button>
+            <button
+              className="btn btn-secondary btn-lg"
+              onClick={handleOpenReportModal}
+              style={{ flex: 2 }}
+              id="view-report-btn"
+              aria-label="View Clinical Report"
+              title="View Clinical Report"
+            >
+              <FileText size={18} />
+              View Report
             </button>
             <button
               className="btn btn-ghost btn-lg"
               onClick={handleSaveResult}
               style={{ flex: 1 }}
               id="save-result-btn"
+              aria-label="Save Screening Result"
+              title="Save Screening Result"
             >
               <Save size={18} />
               Save Result
@@ -426,7 +467,11 @@ export default function ResultPage() {
       {/* Report Modal */}
       <ReportModal
         isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
+        onClose={() => {
+          setIsReportModalOpen(false);
+          setAutoDownloadReport(false);
+        }}
+        autoDownload={autoDownloadReport}
         screeningData={{
           ...predData,
           screeningId,

@@ -32,6 +32,20 @@ export function AppProvider({ children }) {
 
   const [backendOnline, setBackendOnline] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [isOffline, setIsOffline] = useState(() => !navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Primary platform collections (Patients, Screenings, Reports)
   const [patients, setPatients] = useState([]);
@@ -142,6 +156,7 @@ export function AppProvider({ children }) {
     language,
     toggleLanguage,
     backendOnline,
+    isOffline,
     patients,
     addPatient,
     updatePatient,

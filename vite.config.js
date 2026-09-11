@@ -20,7 +20,7 @@ export default defineConfig({
       manifest: {
         name: 'Retina AI — Retinal Disease Screening Platform',
         short_name: 'Retina AI',
-        description: 'AI-based retinal and fundus image screening prototype with 5-stage Diabetic Retinopathy classification, multi-disease screening, and Grad-CAM explainability.',
+        description: 'AI-based retinal and fundus image screening platform with 5-stage Diabetic Retinopathy classification, multi-disease screening, and Grad-CAM explainability.',
         theme_color: '#2EC4B6',
         background_color: '#e0f7fa',
         display: 'standalone',

@@ -170,7 +170,6 @@ export default function ResultPage() {
   const heatmapImg = asyncGradcamUrl || predData.heatmapDataUrl || predData.gradcamUrl || predData.gradcam_url;
 
   const detectedFindings = predData.detectedFindings || [];
-  const secondaryFindings = predData.secondaryFindings || [];
 
   const notableSecondary = detectedFindings.length > 0
     ? detectedFindings.join(', ')

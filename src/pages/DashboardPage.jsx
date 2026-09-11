@@ -12,9 +12,6 @@ import {
   Plus,
   ArrowRight,
   Eye,
-  Layers,
-  ShieldCheck,
-  Zap,
   ChevronRight,
   ShieldAlert,
   Calendar
@@ -64,33 +61,6 @@ export default function DashboardPage() {
     }
   ];
 
-  // Features list
-  const features = [
-    {
-      icon: Eye,
-      title: 'Diabetic Retinopathy Classification',
-      desc: 'Detects 5 DR stages from fundus images (Stage 0 to Stage 4).',
-      badge: '5 DR Stages'
-    },
-    {
-      icon: Layers,
-      title: 'Multi-Disease Screening',
-      desc: 'Screens for additional retinal conditions including AMD/ARMD, BRVO, glaucoma, cataract, and myopia.',
-      badge: 'Multi-Condition'
-    },
-    {
-      icon: ShieldCheck,
-      title: 'AI Explainability (Grad-CAM)',
-      desc: 'Generates attention heatmaps highlighting retinal regions that contributed to the model prediction.',
-      badge: 'Grad-CAM XAI'
-    },
-    {
-      icon: Zap,
-      title: 'Fast Automated Screening',
-      desc: 'Provides instant automated evaluation with comprehensive clinical PDF report generation.',
-      badge: 'Instant Inference'
-    }
-  ];
 
   // Recent screenings — live data only (no mock/sample data)
   const recentScreeningsList = screenings.slice(0, 5);
@@ -214,68 +184,51 @@ export default function DashboardPage() {
         </div>
 
         <div className="stack stagger-children">
-          {recentScreeningsList.map((sc, i) => (
-            <div
-              key={i}
-              className="glass-card patient-row"
-              onClick={() => navigate(`/result/${sc.screeningId}`)}
-            >
-              <div className="patient-left-cluster">
-                <div className="patient-avatar-disc">
-                  <Eye size={18} />
-                </div>
-                <div className="patient-row-info">
-                  <div className="patient-name-line">
-                    <span className="patient-name">{sc.patientName}</span>
-                    <span className="screening-id-tag">{sc.screeningId}</span>
-                  </div>
-                  <span className="patient-meta">
-                    <Calendar size={12} style={{ display: 'inline', marginRight: 4 }} />
-                    {sc.screeningDate} · {sc.findingsSummary}
-                  </span>
-                </div>
-              </div>
-
-              <div className="patient-right-cluster">
-                <SeverityBadge severity={sc.drStage} />
-                <button
-                  className="btn btn-ghost btn-sm view-result-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/result/${sc.screeningId}`);
-                  }}
-                >
-                  View Result
-                  <ArrowRight size={14} />
-                </button>
-              </div>
+          {recentScreeningsList.length === 0 ? (
+            <div className="glass-card" style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <ScanEye size={36} style={{ opacity: 0.5, margin: '0 auto 10px', display: 'block', color: 'var(--accent-primary)' }} />
+              <p style={{ margin: 0, fontWeight: 500, color: 'var(--text-primary)' }}>No screenings recorded yet.</p>
+              <p style={{ margin: '4px 0 0', fontSize: '0.8125rem' }}>Start a new screening to see results here.</p>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Project Core Features */}
-      <div className="features-section" style={{ marginTop: 32 }}>
-        <div className="section-header-wrap">
-          <h2 className="section-title">Core AI Screening Capabilities</h2>
-          <p className="section-subtitle">Integrated clinical deep learning modules</p>
-        </div>
-        <div className="grid-2 stagger-children features-grid">
-          {features.map((feat, i) => {
-            const Icon = feat.icon;
-            return (
-              <div className="glass-card feature-card" key={i}>
-                <div className="feature-top">
-                  <div className="feature-icon">
-                    <Icon size={22} />
+          ) : (
+            recentScreeningsList.map((sc, i) => (
+              <div
+                key={i}
+                className="glass-card patient-row"
+                onClick={() => navigate(`/result/${sc.screeningId}`)}
+              >
+                <div className="patient-left-cluster">
+                  <div className="patient-avatar-disc">
+                    <Eye size={18} />
                   </div>
-                  <span className="feature-badge">{feat.badge}</span>
+                  <div className="patient-row-info">
+                    <div className="patient-name-line">
+                      <span className="patient-name">{sc.patientName}</span>
+                      <span className="screening-id-tag">{sc.screeningId}</span>
+                    </div>
+                    <span className="patient-meta">
+                      <Calendar size={12} style={{ display: 'inline', marginRight: 4 }} />
+                      {sc.screeningDate} · {sc.findingsSummary}
+                    </span>
+                  </div>
                 </div>
-                <h3 className="feature-title">{feat.title}</h3>
-                <p className="feature-desc">{feat.desc}</p>
+
+                <div className="patient-right-cluster">
+                  <SeverityBadge severity={sc.drStage} />
+                  <button
+                    className="btn btn-ghost btn-sm view-result-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/result/${sc.screeningId}`);
+                    }}
+                  >
+                    View Result
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
               </div>
-            );
-          })}
+            ))
+          )}
         </div>
       </div>
 

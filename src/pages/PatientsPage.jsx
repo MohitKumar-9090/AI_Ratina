@@ -11,7 +11,8 @@ import {
   ArrowRight,
   ScanEye,
   Filter,
-  Eye
+  Eye,
+  ShieldAlert
 } from 'lucide-react';
 import './PatientsPage.css';
 
@@ -189,6 +190,12 @@ export default function PatientsPage() {
             </div>
           ))
         )}
+      </div>
+
+      {/* Professional Medical Safety Note */}
+      <div className="medical-safety-note" style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+        <ShieldAlert size={15} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+        <span>AI-generated screening results should be reviewed by a qualified eye-care professional.</span>
       </div>
 
       {/* New Patient Registration Modal */}

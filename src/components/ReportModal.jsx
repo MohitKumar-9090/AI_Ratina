@@ -284,7 +284,7 @@ export default function ReportModal({
                   <span className="dr-stage-tag">{resolvedStageLabel}</span>
                   <span className="dr-subtitle">Primary Target: Diabetic Retinopathy Classification</span>
                 </div>
-                <div className="model-id-pill">EfficientNet-B0 Multitask Model</div>
+                <div className="model-id-pill">Retina AI Deep Learning System</div>
               </div>
 
               {/* 6. ADDITIONAL FINDINGS TABLE */}

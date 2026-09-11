@@ -110,7 +110,7 @@
       "step4": "Additional retinal findings",
       "step5": "AI attention analysis",
       "step6": "Report preparation",
-      "pleaseWait": "EfficientNet-B0 multitask model evaluating retinal microvasculature"
+      "pleaseWait": "Evaluating retinal microvasculature and clinical biomarkers..."
     },
     "result": {
       "title": "Retina Screening Result",
@@ -190,17 +190,17 @@
     },
     "settings": {
       "title": "Settings",
-      "appInfo": "Application Information",
-      "modelInfo": "Model Information",
-      "reportSettings": "Report Settings",
-      "dataManagement": "Data Management",
+      "subtitle": "Configure clinical preferences, application behavior, and accessibility",
+      "appearance": "Appearance",
+      "language": "Language",
+      "notifications": "Notifications",
+      "screening": "Screening Preferences",
+      "reports": "Report Preferences",
+      "privacy": "Data & Privacy",
+      "app": "Application & PWA",
+      "accessibility": "Accessibility",
       "about": "About Retina AI",
-      "modelDetails": "EfficientNet-B0 multitask model trained on APTOS 2019, RFMiD, and ODIR-5K.",
-      "weights": "Model Weights: retina_project_v4_best.pth",
-      "database": "MongoDB Atlas Integration",
-      "resetData": "Reset Demo Data",
-      "theme": "Theme",
-      "language": "Language"
+      "resetPreferences": "Reset Preferences"
     },
     "notice": {
       "medical": "AI-generated screening results are intended to support clinical review and should be interpreted by a qualified eye-care professional."
@@ -328,7 +328,7 @@
       "step4": "अतिरिक्त रेटिनल निष्कर्ष",
       "step5": "AI अटेंशन विश्लेषण",
       "step6": "रिपोर्ट तैयार करना",
-      "pleaseWait": "EfficientNet-B0 मल्टीटास्क मॉडल रेटिना का मूल्यांकन कर रहा है"
+      "pleaseWait": "रेटिनल बायोमार्कर और रक्त वाहिकाओं का विश्लेषण जारी है..."
     },
     "result": {
       "title": "रेटिना स्क्रीनिंग परिणाम",
@@ -408,17 +408,17 @@
     },
     "settings": {
       "title": "सेटिंग्स",
-      "appInfo": "एप्लिकेशन जानकारी",
-      "modelInfo": "मॉडल जानकारी",
-      "reportSettings": "रिपोर्ट सेटिंग्स",
-      "dataManagement": "डेटा प्रबंधन",
+      "subtitle": "क्लिनिकल प्राथमिकताएं, एप्लिकेशन व्यवहार और एक्सेसिबिलिटी कॉन्फ़िगर करें",
+      "appearance": "दिखावट",
+      "language": "भाषा",
+      "notifications": "सूचनाएं",
+      "screening": "स्क्रीनिंग प्राथमिकताएं",
+      "reports": "रिपोर्ट प्राथमिकताएं",
+      "privacy": "डेटा और गोपनीयता",
+      "app": "एप्लिकेशन और PWA",
+      "accessibility": "सुलभता (Accessibility)",
       "about": "Retina AI के बारे में",
-      "modelDetails": "EfficientNet-B0 मल्टीटास्क मॉडल APTOS 2019, RFMiD और ODIR-5K पर प्रशिक्षित।",
-      "weights": "मॉडल वेट्स: retina_project_v4_best.pth",
-      "database": "MongoDB Atlas एकीकरण",
-      "resetData": "डेमो डेटा रीसेट करें",
-      "theme": "थीम",
-      "language": "भाषा"
+      "resetPreferences": "प्राथमिकताएं रीसेट करें"
     },
     "notice": {
       "medical": "AI-जनरेटेड स्क्रीनिंग परिणाम क्लिनिकल समीक्षा में सहायता के लिए हैं और योग्य नेत्र विशेषज्ञ द्वारा व्याख्या किए जाने चाहिए।"

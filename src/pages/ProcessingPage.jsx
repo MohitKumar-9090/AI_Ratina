@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Eye, ShieldCheck, Sparkles, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Eye, ShieldCheck, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 import { predictFundusImage } from '../services/api';
 import { getErrorMessage } from '../utils/errorUtils';
 import './ProcessingPage.css';
@@ -136,10 +136,6 @@ export default function ProcessingPage() {
 
         <div className="processing-header-wrap">
           <h2 className="processing-title">{t('processing.analyzing')}</h2>
-          <div className="processing-model-tag">
-            <Sparkles size={14} />
-            <span>EfficientNet-B0 Multitask Model</span>
-          </div>
         </div>
 
         {error ? (

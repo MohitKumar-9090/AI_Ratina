@@ -71,8 +71,16 @@ export function AppProvider({ children }) {
     fetchScreenings().then(setScreenings).catch(() => {});
   }, []);
 
-  const toggleTheme = useCallback(() => {
-    setThemeState(prev => (prev === 'light' ? 'dark' : 'light'));
+  const toggleTheme = useCallback((val) => {
+    setThemeState(prev => {
+      const next = typeof val === 'string' ? val : (prev === 'light' ? 'dark' : 'light');
+      return next;
+    });
+  }, []);
+
+  const setLanguage = useCallback((lang) => {
+    setLanguageState(lang);
+    localStorage.setItem(STORAGE_KEYS.LANG, lang);
   }, []);
 
   const toggleLanguage = useCallback(() => {
@@ -154,6 +162,7 @@ export function AppProvider({ children }) {
     theme,
     setTheme: toggleTheme,
     language,
+    setLanguage,
     toggleLanguage,
     backendOnline,
     isOffline,

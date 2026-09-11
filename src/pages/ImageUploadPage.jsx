@@ -42,8 +42,7 @@ export default function ImageUploadPage() {
     uploadedImage,
     setUploadedImage,
     isOffline,
-    showToast,
-    t
+    showToast
   } = useApp();
 
   const fileInputRef = useRef(null);

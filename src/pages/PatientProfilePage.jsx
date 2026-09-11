@@ -15,7 +15,8 @@ import {
   Eye,
   FileText,
   Clock,
-  Sparkles
+  Sparkles,
+  ShieldAlert
 } from 'lucide-react';
 import './PatientProfilePage.css';
 
@@ -30,41 +31,9 @@ export default function PatientProfilePage() {
 
   // Screenings for this patient
   const patientScreenings = useMemo(() => {
-    const matched = screenings.filter(s => s.patientId === patient?.patientId);
-    if (matched.length >= 0) return matched;
-
-    // Provide historical default if this is patient 1 or 2
-    if (patient?.patientId === 'PAT-2026-001') {
-      return [
-        {
-          screeningId: 'SCR-001',
-          patientId: patient.patientId,
-          screeningDate: '2026-09-08',
-          drStage: 'stage2',
-          drStageLabel: 'Stage 2 — Moderate',
-          findingsSummary: 'AMD / ARMD: Possible finding, Glaucoma: Needs review',
-          reportStatus: 'Finalized',
-          reportId: 'REP-2026-001'
-        }
-      ];
-    }
-
-    if (patient?.patientId === 'PAT-2026-002') {
-      return [
-        {
-          screeningId: 'SCR-002',
-          patientId: patient.patientId,
-          screeningDate: '2026-09-07',
-          drStage: 'stage3',
-          drStageLabel: 'Stage 3 — Severe',
-          findingsSummary: 'BRVO: Possible finding',
-          reportStatus: 'Finalized',
-          reportId: 'REP-2026-002'
-        }
-      ];
-    }
-
-    return [];
+    if (!patient) return [];
+    const pid = patient.patientId || patient.patient_id;
+    return screenings.filter(s => s.patientId === pid || s.patient_id === pid);
   }, [screenings, patient]);
 
   const handleStartScreening = () => {
@@ -292,6 +261,12 @@ export default function PatientProfilePage() {
             })
           )}
         </div>
+      </div>
+
+      {/* Professional Medical Safety Note */}
+      <div className="medical-safety-note" style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+        <ShieldAlert size={15} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+        <span>AI-generated screening results should be reviewed by a qualified eye-care professional.</span>
       </div>
     </div>
   );
